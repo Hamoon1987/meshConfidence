@@ -141,10 +141,10 @@ logs/
 *.swp
 *.pyc
 
-# data files
-data/*
-# But not the README
-!data/README.md
+# # data files
+# data/*
+# # But not the README
+# !data/README.md
 
 # ignore prior.py from smplify-x repo
 smplify/prior.py
