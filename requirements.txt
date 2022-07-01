@@ -7,7 +7,8 @@ scikit-image
 scipy==1.0.0
 tensorboard
 chumpy
-smplx
+smplx==0.1.13
+dataclasses
 spacepy
 torch==1.1.0
 torchgeometry
