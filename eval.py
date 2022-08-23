@@ -29,21 +29,21 @@ from models import hmr, SMPL
 from datasets import BaseDataset
 from utils.imutils import uncrop
 from utils.pose_utils import reconstruction_error
-from utils.part_utils import PartRenderer
+# from utils.part_utils import PartRenderer
 
 # Define command-line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', default=None, help='Path to network checkpoint')
 parser.add_argument('--dataset', default='h36m-p1', choices=['h36m-p1', 'h36m-p2', 'lsp', '3dpw', 'mpi-inf-3dhp'], help='Choose evaluation dataset')
-parser.add_argument('--log_freq', default=50, type=int, help='Frequency of printing intermediate results')
-parser.add_argument('--batch_size', default=32, help='Batch size for testing')
+parser.add_argument('--log_freq', default=40, type=int, help='Frequency of printing intermediate results')
+parser.add_argument('--batch_size', default=8, help='Batch size for testing')
 parser.add_argument('--shuffle', default=False, action='store_true', help='Shuffle data')
-parser.add_argument('--num_workers', default=8, type=int, help='Number of processes for data loading')
+parser.add_argument('--num_workers', default=2, type=int, help='Number of processes for data loading')
 parser.add_argument('--result_file', default=None, help='If set, save detections to a .npz file')
 
 def run_evaluation(model, dataset_name, dataset, result_file,
-                   batch_size=32, img_res=224, 
-                   num_workers=32, shuffle=False, log_freq=50):
+                   batch_size=8, img_res=224, 
+                   num_workers=2, shuffle=False, log_freq=50):
     """Run evaluation on the datasets and metrics we report in the paper. """
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -61,7 +61,7 @@ def run_evaluation(model, dataset_name, dataset, result_file,
                        gender='female',
                        create_transl=False).to(device)
     
-    renderer = PartRenderer()
+    # renderer = PartRenderer()
     
     # Regressor for H36m joints
     J_regressor = torch.from_numpy(np.load(config.JOINT_REGRESSOR_H36M)).float()
@@ -148,7 +148,8 @@ def run_evaluation(model, dataset_name, dataset, result_file,
             J_regressor_batch = J_regressor[None, :].expand(pred_vertices.shape[0], -1, -1).to(device)
             # Get 14 ground truth joints
             if 'h36m' in dataset_name or 'mpi-inf' in dataset_name:
-                gt_keypoints_3d = batch['pose_3d'].cuda()
+                device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+                gt_keypoints_3d = batch['pose_3d'].to(devive)
                 gt_keypoints_3d = gt_keypoints_3d[:, joint_mapper_gt, :-1]
             # For 3DPW get the 14 common joints from the rendered shape
             else:
@@ -178,55 +179,55 @@ def run_evaluation(model, dataset_name, dataset, result_file,
             recon_err[step * batch_size:step * batch_size + curr_batch_size] = r_error
 
 
-        # If mask or part evaluation, render the mask and part images
-        if eval_masks or eval_parts:
-            mask, parts = renderer(pred_vertices, pred_camera)
+        # # If mask or part evaluation, render the mask and part images
+        # if eval_masks or eval_parts:
+        #     mask, parts = renderer(pred_vertices, pred_camera)
 
-        # Mask evaluation (for LSP)
-        if eval_masks:
-            center = batch['center'].cpu().numpy()
-            scale = batch['scale'].cpu().numpy()
-            # Dimensions of original image
-            orig_shape = batch['orig_shape'].cpu().numpy()
-            for i in range(curr_batch_size):
-                # After rendering, convert imate back to original resolution
-                pred_mask = uncrop(mask[i].cpu().numpy(), center[i], scale[i], orig_shape[i]) > 0
-                # Load gt mask
-                gt_mask = cv2.imread(os.path.join(annot_path, batch['maskname'][i]), 0) > 0
-                # Evaluation consistent with the original UP-3D code
-                accuracy += (gt_mask == pred_mask).sum()
-                pixel_count += np.prod(np.array(gt_mask.shape))
-                for c in range(2):
-                    cgt = gt_mask == c
-                    cpred = pred_mask == c
-                    tp[c] += (cgt & cpred).sum()
-                    fp[c] +=  (~cgt & cpred).sum()
-                    fn[c] +=  (cgt & ~cpred).sum()
-                f1 = 2 * tp / (2 * tp + fp + fn)
+        # # Mask evaluation (for LSP)
+        # if eval_masks:
+        #     center = batch['center'].cpu().numpy()
+        #     scale = batch['scale'].cpu().numpy()
+        #     # Dimensions of original image
+        #     orig_shape = batch['orig_shape'].cpu().numpy()
+        #     for i in range(curr_batch_size):
+        #         # After rendering, convert imate back to original resolution
+        #         pred_mask = uncrop(mask[i].cpu().numpy(), center[i], scale[i], orig_shape[i]) > 0
+        #         # Load gt mask
+        #         gt_mask = cv2.imread(os.path.join(annot_path, batch['maskname'][i]), 0) > 0
+        #         # Evaluation consistent with the original UP-3D code
+        #         accuracy += (gt_mask == pred_mask).sum()
+        #         pixel_count += np.prod(np.array(gt_mask.shape))
+        #         for c in range(2):
+        #             cgt = gt_mask == c
+        #             cpred = pred_mask == c
+        #             tp[c] += (cgt & cpred).sum()
+        #             fp[c] +=  (~cgt & cpred).sum()
+        #             fn[c] +=  (cgt & ~cpred).sum()
+        #         f1 = 2 * tp / (2 * tp + fp + fn)
 
-        # Part evaluation (for LSP)
-        if eval_parts:
-            center = batch['center'].cpu().numpy()
-            scale = batch['scale'].cpu().numpy()
-            orig_shape = batch['orig_shape'].cpu().numpy()
-            for i in range(curr_batch_size):
-                pred_parts = uncrop(parts[i].cpu().numpy().astype(np.uint8), center[i], scale[i], orig_shape[i])
-                # Load gt part segmentation
-                gt_parts = cv2.imread(os.path.join(annot_path, batch['partname'][i]), 0)
-                # Evaluation consistent with the original UP-3D code
-                # 6 parts + background
-                for c in range(7):
-                   cgt = gt_parts == c
-                   cpred = pred_parts == c
-                   cpred[gt_parts == 255] = 0
-                   parts_tp[c] += (cgt & cpred).sum()
-                   parts_fp[c] +=  (~cgt & cpred).sum()
-                   parts_fn[c] +=  (cgt & ~cpred).sum()
-                gt_parts[gt_parts == 255] = 0
-                pred_parts[pred_parts == 255] = 0
-                parts_f1 = 2 * parts_tp / (2 * parts_tp + parts_fp + parts_fn)
-                parts_accuracy += (gt_parts == pred_parts).sum()
-                parts_pixel_count += np.prod(np.array(gt_parts.shape))
+        # # Part evaluation (for LSP)
+        # if eval_parts:
+        #     center = batch['center'].cpu().numpy()
+        #     scale = batch['scale'].cpu().numpy()
+        #     orig_shape = batch['orig_shape'].cpu().numpy()
+        #     for i in range(curr_batch_size):
+        #         pred_parts = uncrop(parts[i].cpu().numpy().astype(np.uint8), center[i], scale[i], orig_shape[i])
+        #         # Load gt part segmentation
+        #         gt_parts = cv2.imread(os.path.join(annot_path, batch['partname'][i]), 0)
+        #         # Evaluation consistent with the original UP-3D code
+        #         # 6 parts + background
+        #         for c in range(7):
+        #            cgt = gt_parts == c
+        #            cpred = pred_parts == c
+        #            cpred[gt_parts == 255] = 0
+        #            parts_tp[c] += (cgt & cpred).sum()
+        #            parts_fp[c] +=  (~cgt & cpred).sum()
+        #            parts_fn[c] +=  (cgt & ~cpred).sum()
+        #         gt_parts[gt_parts == 255] = 0
+        #         pred_parts[pred_parts == 255] = 0
+        #         parts_f1 = 2 * parts_tp / (2 * parts_tp + parts_fp + parts_fn)
+        #         parts_accuracy += (gt_parts == pred_parts).sum()
+        #         parts_pixel_count += np.prod(np.array(gt_parts.shape))
 
         # Print intermediate results during evaluation
         if step % log_freq == log_freq - 1:
@@ -265,7 +266,8 @@ def run_evaluation(model, dataset_name, dataset, result_file,
 if __name__ == '__main__':
     args = parser.parse_args()
     model = hmr(config.SMPL_MEAN_PARAMS)
-    checkpoint = torch.load(args.checkpoint)
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    checkpoint = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(checkpoint['model'], strict=False)
     model.eval()
 

@@ -12,7 +12,7 @@ LSPET_ROOT = ''
 MPII_ROOT = ''
 COCO_ROOT = ''
 MPI_INF_3DHP_ROOT = ''
-PW3D_ROOT = ''
+PW3D_ROOT = './data/3DPW'
 UPI_S1H_ROOT = ''
 
 # Output folder to save test/train npz files
