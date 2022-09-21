@@ -35,18 +35,19 @@ from utils.pose_utils import reconstruction_error
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', default=None, help='Path to network checkpoint')
 parser.add_argument('--dataset', default='h36m-p1', choices=['h36m-p1', 'h36m-p2', 'lsp', '3dpw', 'mpi-inf-3dhp'], help='Choose evaluation dataset')
-parser.add_argument('--log_freq', default=40, type=int, help='Frequency of printing intermediate results')
-parser.add_argument('--batch_size', default=8, help='Batch size for testing')
+parser.add_argument('--log_freq', default=50 , type=int, help='Frequency of printing intermediate results')
+parser.add_argument('--batch_size', default=32, help='Batch size for testing')
 parser.add_argument('--shuffle', default=False, action='store_true', help='Shuffle data')
-parser.add_argument('--num_workers', default=2, type=int, help='Number of processes for data loading')
+parser.add_argument('--num_workers', default=0, type=int, help='Number of processes for data loading')
 parser.add_argument('--result_file', default=None, help='If set, save detections to a .npz file')
 
 def run_evaluation(model, dataset_name, dataset, result_file,
-                   batch_size=8, img_res=224, 
-                   num_workers=2, shuffle=False, log_freq=50):
+                   batch_size=32, img_res=224, 
+                   num_workers=0, shuffle=False, log_freq=50):
     """Run evaluation on the datasets and metrics we report in the paper. """
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    print(device)
 
     # Transfer model to the GPU
     model.to(device)
@@ -149,7 +150,7 @@ def run_evaluation(model, dataset_name, dataset, result_file,
             # Get 14 ground truth joints
             if 'h36m' in dataset_name or 'mpi-inf' in dataset_name:
                 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-                gt_keypoints_3d = batch['pose_3d'].to(devive)
+                gt_keypoints_3d = batch['pose_3d'].to(device)
                 gt_keypoints_3d = gt_keypoints_3d[:, joint_mapper_gt, :-1]
             # For 3DPW get the 14 common joints from the rendered shape
             else:
@@ -267,6 +268,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     model = hmr(config.SMPL_MEAN_PARAMS)
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    print(device)
     checkpoint = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(checkpoint['model'], strict=False)
     model.eval()

@@ -5,13 +5,13 @@ Things you need to change: *_ROOT that indicate the path to each dataset
 """
 from os.path import join
 
-H36M_ROOT = ''
+H36M_ROOT = './data/H36M'
 LSP_ROOT = ''
 LSP_ORIGINAL_ROOT = ''
 LSPET_ROOT = ''
 MPII_ROOT = ''
 COCO_ROOT = ''
-MPI_INF_3DHP_ROOT = ''
+MPI_INF_3DHP_ROOT = 'data/MPI_INF_3DHP'
 PW3D_ROOT = './data/3DPW'
 UPI_S1H_ROOT = ''
 
