@@ -9,9 +9,9 @@ def pw3d_extract(dataset_path, out_path):
     scaleFactor = 1.2
 
     # structs we use
-    imgnames_, scales_, centers_, parts_ = [], [], [], []
-    poses_, shapes_, genders_ = [], [], [] 
-
+    imgnames_, scales_, centers_ = [], [], []
+    poses_, shapes_, genders_, translation_ = [], [], [], []
+    parts_ = []
     # get a list of .pkl files in the directory
     dataset_path = os.path.join(dataset_path, 'sequenceFiles', 'test')
     files = [os.path.join(dataset_path, f) 
@@ -50,6 +50,7 @@ def pw3d_extract(dataset_path, out_path):
                     
                     # transform global pose
                     pose = valid_pose[valid_i]
+                    # translation = valid_global_poses[valid_i][:3,3]
                     extrinsics = valid_global_poses[valid_i][:3,:3]
                     pose[:3] = cv2.Rodrigues(np.dot(extrinsics, cv2.Rodrigues(pose[:3])[0]))[0].T[0]                      
 
@@ -59,15 +60,22 @@ def pw3d_extract(dataset_path, out_path):
                     poses_.append(pose)
                     shapes_.append(valid_betas[valid_i])
                     genders_.append(gender)
+                    parts_.append(part)
+                    # translation_.append(translation)
 
     # store data
+    # translation_ = np.array(translation_, dtype=object)
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
     out_file = os.path.join(out_path,
-        '3dpw_test.npz')
+        '3dpw_test_m.npz')
     np.savez(out_file, imgname=imgnames_,
                        center=centers_,
                        scale=scales_,
                        pose=poses_,
                        shape=shapes_,
-                       gender=genders_)
+                       gender=genders_,
+                    #    translation=translation_,
+                       )
+
+pw3d_extract('./data/3DPW', './data/dataset_extras')

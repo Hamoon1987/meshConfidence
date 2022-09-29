@@ -1,13 +1,10 @@
 """
 Demo code
-
 To run our method, you need a bounding box around the person. The person needs to be centered inside the bounding box and the bounding box should be relatively tight. You can either supply the bounding box directly or provide an [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) detection file. In the latter case we infer the bounding box from the detections.
-
 In summary, we provide 3 different ways to use our demo code and models:
 1. Provide only an input image (using ```--img```), in which case it is assumed that it is already cropped with the person centered in the image.
 2. Provide an input image as before, together with the OpenPose detection .json (using ```--openpose```). Our code will use the detections to compute the bounding box and crop the image.
 3. Provide an image and a bounding box (using ```--bbox```). The expected format for the json file can be seen in ```examples/im1010_bbox.json```.
-
 Example with OpenPose detection .json
 ```
 python3 demo.py --checkpoint=data/model_checkpoint.pt --img=examples/im1010.png --openpose=examples/im1010_openpose.json
@@ -20,7 +17,6 @@ Example with cropped and centered image
 ```
 python3 demo.py --checkpoint=data/model_checkpoint.pt --img=examples/im1010.png
 ```
-
 Running the previous command will save the results in ```examples/im1010_{shape,shape_side}.png```. The file ```im1010_shape.png``` shows the overlayed reconstruction of human shape. We also render a side view, saved in ```im1010_shape_side.png```.
 """
 
@@ -36,10 +32,6 @@ from utils.imutils import crop
 from utils.renderer import Renderer
 import config
 import constants
-from torch.utils.data import DataLoader
-import itertools
-import constants
-from datasets import BaseDataset
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', required=True, help='Path to pretrained checkpoint')
@@ -126,70 +118,59 @@ if __name__ == '__main__':
         pred_output = smpl(betas=pred_betas, body_pose=pred_rotmat[:,1:], global_orient=pred_rotmat[:,0].unsqueeze(1), pose2rot=False)
         pred_vertices = pred_output.vertices
     
-    # Get the predicted 3d joints
-    # Get 14 predicted joints from the mesh
-    J_regressor = torch.from_numpy(np.load(config.JOINT_REGRESSOR_H36M)).float().to(device)
-    joint_mapper_h36m = constants.H36M_TO_J14
-    joint_mapper_gt = constants.J24_TO_J14
-    pred_keypoints_3d = torch.matmul(J_regressor, pred_vertices)
-    pred_pelvis = pred_keypoints_3d[:, [0],:].clone()
-    pred_keypoints_3d = pred_keypoints_3d[:, joint_mapper_h36m, :]
-    pred_keypoints_3d = pred_keypoints_3d - pred_pelvis 
-    pred_keypoints_3d = pred_keypoints_3d.to(device)
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    # Calculate camera parameters for rendering
+    camera_translation = torch.stack([pred_camera[:,1], pred_camera[:,2], 2*constants.FOCAL_LENGTH/(constants.IMG_RES * pred_camera[:,0] +1e-9)],dim=-1)
+    print(camera_translation)
 
-    dataset = BaseDataset(None, 'h36m-p2', is_train=False)
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
-    batch_idx = 15
-    batch = next(itertools.islice(data_loader, batch_idx, None))
-
-    gt_keypoints_3d = batch['pose_3d']
-    joint_mapper_gt = constants.J24_TO_J14
-    gt_keypoints_3d = gt_keypoints_3d[:, joint_mapper_gt, :-1]
-    gt_keypoints_3d = gt_keypoints_3d.to(device)
-
-
-
-    error = torch.sqrt(((pred_keypoints_3d - gt_keypoints_3d) ** 2).sum(dim=-1)).mean(dim=-1).cpu().numpy()
-    print(error[0]*1000)
-    # from utils.geometry import perspective_projection
-    # # camera_center = torch.zeros(1, 2, device= device)
-    # # Calculate camera parameters for rendering
-    # camera_translation = torch.stack([pred_camera[:,1], pred_camera[:,2], 2*constants.FOCAL_LENGTH/(constants.IMG_RES * pred_camera[:,0] +1e-9)],dim=-1)
-    # camera_center = torch.tensor([constants.IMG_RES // 2, constants.IMG_RES // 2])
-    # pred_keypoints_2d = perspective_projection(pred_keypoints_3d,
-    #                                                rotation=torch.eye(3, device=device).unsqueeze(0).expand(1, -1, -1),
-    #                                                translation=camera_translation,
-    #                                                focal_length=constants.FOCAL_LENGTH,
-    #                                                camera_center=camera_center)
 
     
-    # pred_keypoints_2d = pred_keypoints_2d[0].cpu().numpy()
+   
+    # Get 3d predicted points and convert it to 2d
+    J_regressor = torch.from_numpy(np.load(config.JOINT_REGRESSOR_H36M)).float()
+    J_regressor = J_regressor.to(device)
+    pred_keypoints_3d = torch.matmul(J_regressor, pred_vertices)
+    # pred_pelvis = pred_keypoints_3d[:, [0],:].clone()
+    joint_mapper_h36m = constants.H36M_TO_J17
+    pred_keypoints_3d = pred_keypoints_3d[:, joint_mapper_h36m, :]
+    print(pred_keypoints_3d)
+    # pred_keypoints_3d = pred_keypoints_3d - pred_pelvis 
+    # pred_keypoints_3d = pred_keypoints_3d + 1 
+    from utils.geometry import perspective_projection
+    # camera_center = torch.zeros(1, 2, device= device)
+    
+    camera_center = torch.tensor([constants.IMG_RES // 2, constants.IMG_RES // 2])
+    pred_keypoints_2d = perspective_projection(pred_keypoints_3d,
+                                                   rotation=torch.eye(3, device=device).unsqueeze(0).expand(1, -1, -1),
+                                                   translation=camera_translation,
+                                                   focal_length=constants.FOCAL_LENGTH,
+                                                   camera_center=camera_center)
 
-
-    # camera_translation = camera_translation[0].cpu().numpy()
-    # pred_vertices = pred_vertices[0].cpu().numpy()
+    
+    pred_keypoints_2d = pred_keypoints_2d[0].cpu().numpy()
+    pred_vertices = pred_vertices[0].cpu().numpy()
+    camera_translation = camera_translation[0].cpu().numpy()
     img = img.permute(1,2,0).cpu().numpy()
-    img = 255 * img[:,:,::-1]
-    # for i in range(pred_keypoints_2d.shape[0]):
-    #     cv2.circle(img, (int(pred_keypoints_2d[i][0]), int(pred_keypoints_2d[i][1])), 1, color = (255, 0, 0), thickness=-1)
-    # i = 6
-    # cv2.circle(img, (int(pred_keypoints_2d[i][0]), int(pred_keypoints_2d[i][1])), 3, color = (255, 0, 0), thickness=-1)
-    # Joint names: 
+
+    
     # Render parametric shape
-    # img_shape = renderer(pred_vertices, camera_translation, img)
+    img_shape = renderer(pred_vertices, camera_translation, img)
+    img_shape_r = 255* img_shape[:,:,::-1]
+    pred_keypoints_2d = pred_keypoints_2d[:14]
+    # for i in range(pred_keypoints_2d.shape[0]):
+    i = 13
+    cv2.circle(img_shape_r, (int(pred_keypoints_2d[i][0]), int(pred_keypoints_2d[i][1])), 5, color = (255, 0, 0), thickness=-1)
     
     # Render side views
-    # aroundy = cv2.Rodrigues(np.array([0, np.radians(90.), 0]))[0]
-    # center = pred_vertices.mean(axis=0)
-    # rot_vertices = np.dot((pred_vertices - center), aroundy) + center
+    aroundy = cv2.Rodrigues(np.array([0, np.radians(90.), 0]))[0]
+    center = pred_vertices.mean(axis=0)
+    rot_vertices = np.dot((pred_vertices - center), aroundy) + center
     
     # Render non-parametric shape
-    # img_shape_side = renderer(rot_vertices, camera_translation, np.ones_like(img))
+    img_shape_side = renderer(rot_vertices, camera_translation, np.ones_like(img))
 
-    # outfile = args.img.split('.')[0] if args.outfile is None else args.outfile
+    outfile = args.img.split('.')[0] if args.outfile is None else args.outfile
 
     # Save reconstructions
-    # cv2.imwrite(outfile + '_shape.png', 255 * img_shape[:,:,::-1])
-    # cv2.imwrite(outfile + '_shape_side.png', 255 * img_shape_side[:,:,::-1])
-    # cv2.imwrite('test.jpg', img)
+    cv2.imwrite(outfile + '_shape.png', 255 * img_shape[:,:,::-1])
+    cv2.imwrite(outfile + '_shape_r.png', img_shape_r)
+    cv2.imwrite(outfile + '_shape_side.png', 255 * img_shape_side[:,:,::-1])

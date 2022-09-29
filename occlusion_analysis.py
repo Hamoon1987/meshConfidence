@@ -1,4 +1,4 @@
-# python3 occlusion_analysis02.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
+# python3 occlusion_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
 # This runs through whole dataset and generates the occluded images and error per joint
 import math
 import torch
@@ -51,8 +51,8 @@ def visualize_grid(image, heatmap, batch_idx):
     # Gets the image and heatmap and combine the two and show the result for each joint
     # image -> Torch.Size([1, 3, 224, 224])
     # heatmap -> (6, 6, 14)
-    # De-normalizing the image
 
+    # De-normalizing the image
     image = image * torch.tensor([0.229, 0.224, 0.225], device=image.device).reshape(1, 3, 1, 1)
     image = image + torch.tensor([0.485, 0.456, 0.406], device=image.device).reshape(1, 3, 1, 1)
 
@@ -122,10 +122,8 @@ def visualize_grid_mean(batch, heatmap, batch_idx, idx_dict, args):
     # Put a box over the maximum
     heatmap_mean_org = orig_heatmap.mean(axis=2)
     heatmap_mean_org = 1000 * heatmap_mean_org
-    # print(np.argmax(heatmap_mean_org))
     h = idx_dict[np.argmax(heatmap_mean_org)][0]
     w = idx_dict[np.argmax(heatmap_mean_org)][1]
-
     img_size = int(img_orig.shape[0])
     occ_stride = int(round(args.stride * (output_size/loader_size)))
     occ_size = int(round(args.occ_size * (output_size/loader_size)))
@@ -177,7 +175,7 @@ def run_dataset(args):
         # batch_idx =i
         # batch = next(iter(data_loader))
     # batch_idx = 2400
-    batch_idx = 27900
+    batch_idx = 26893
     batch = next(itertools.islice(data_loader, batch_idx, None))
     print(batch['imgname'][0])
     images = batch['img']

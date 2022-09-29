@@ -10,6 +10,7 @@ from os.path import join
 import config
 import constants
 from utils.imutils import crop, flip_img, flip_pose, flip_kp, transform, rot_aa
+import numpy as np
 
 class BaseDataset(Dataset):
     """
@@ -25,8 +26,11 @@ class BaseDataset(Dataset):
         self.options = options
         self.img_dir = config.DATASET_FOLDERS[dataset]
         self.normalize_img = Normalize(mean=constants.IMG_NORM_MEAN, std=constants.IMG_NORM_STD)
-        self.data = np.load(config.DATASET_FILES[is_train][dataset])
+        self.data = np.load(config.DATASET_FILES[is_train][dataset], allow_pickle=True)
         self.imgname = self.data['imgname']
+        # self.translation = self.data['translation']
+        # self.translation = np.array(self.translation, dtype=np.float32)
+
         
         # Get paths to gt masks, if available
         try:
@@ -215,7 +219,7 @@ class BaseDataset(Dataset):
         # Get 2D keypoints and apply augmentation transforms
         keypoints = self.keypoints[index].copy()
         item['keypoints'] = torch.from_numpy(self.j2d_processing(keypoints, center, sc*scale, rot, flip)).float()
-
+        # item['translation'] = self.translation[index]
         item['has_smpl'] = self.has_smpl[index]
         item['has_pose_3d'] = self.has_pose_3d
         item['scale'] = float(sc * scale)
