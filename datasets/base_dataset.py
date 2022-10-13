@@ -30,6 +30,11 @@ class BaseDataset(Dataset):
         self.imgname = self.data['imgname']
         # self.translation = self.data['translation']
         # self.translation = np.array(self.translation, dtype=np.float32)
+        self.camera_intrinsics = self.data['camera_intrinsics']
+        self.camera_extrinsics = self.data['camera_extrinsics']
+        self.joint_position = self.data['joint_position']
+        self.bbox = self.data['bbox']
+        self.trans = self.data['trans']
 
         
         # Get paths to gt masks, if available
@@ -230,6 +235,11 @@ class BaseDataset(Dataset):
         item['gender'] = self.gender[index]
         item['sample_index'] = index
         item['dataset_name'] = self.dataset
+        item['camera_extrinsics'] = self.camera_extrinsics[index]
+        item['camera_intrinsics'] = self.camera_intrinsics[index]
+        item['joint_position'] = self.joint_position[index]
+        item['bbox'] = self.bbox[index]
+        item['trans'] = self.trans[index]
 
         try:
             item['maskname'] = self.maskname[index]

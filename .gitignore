@@ -143,6 +143,8 @@ logs/
 
 # data files
 data/*
+occluded_images/*
+occluded_images01/*
 # But not the README
 !data/README.md
 

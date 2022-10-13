@@ -1,5 +1,5 @@
 # python3 occlusion_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
-# This runs through whole dataset and generates the occluded images and error per joint
+# This runs through whole dataset and moves the occlusion over each image and generates the occluded images and error per joint and as average
 import math
 import torch
 import argparse

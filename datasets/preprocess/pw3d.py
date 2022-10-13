@@ -11,7 +11,8 @@ def pw3d_extract(dataset_path, out_path):
     # structs we use
     imgnames_, scales_, centers_ = [], [], []
     poses_, shapes_, genders_, translation_ = [], [], [], []
-    parts_ = []
+    parts_, joint_position_, trans_ = [], [], []
+    camera_extrinsics_, cam_intrinsics_, bbox_ = [], [], []
     # get a list of .pkl files in the directory
     dataset_path = os.path.join(dataset_path, 'sequenceFiles', 'test')
     files = [os.path.join(dataset_path, f) 
@@ -29,6 +30,9 @@ def pw3d_extract(dataset_path, out_path):
             num_people = len(smpl_pose)
             num_frames = len(smpl_pose[0])
             seq_name = str(data['sequence'])
+            cam_intrinsics = data['cam_intrinsics']
+            joint_position = data['jointPositions']
+            trans = data['trans']
             img_names = np.array(['imageFiles/' + seq_name + '/image_%s.jpg' % str(i).zfill(5) for i in range(num_frames)])
             # get through all the people in the sequence
             for i in range(num_people):
@@ -38,8 +42,11 @@ def pw3d_extract(dataset_path, out_path):
                 valid_keypoints_2d = poses2d[i][valid[i]]
                 valid_img_names = img_names[valid[i]]
                 valid_global_poses = global_poses[valid[i]]
+                valid_joint_position = joint_position[i][valid[i]]
+                # print(valid_cam_intrinsics.shape)
                 gender = genders[i]
                 # consider only valid frames
+                valid_trans = trans[i]
                 for valid_i in range(valid_pose.shape[0]):
                     part = valid_keypoints_2d[valid_i,:,:].T
                     part = part[part[:,2]>0,:]
@@ -50,9 +57,13 @@ def pw3d_extract(dataset_path, out_path):
                     
                     # transform global pose
                     pose = valid_pose[valid_i]
+                    joint_positions = valid_joint_position[valid_i]
                     # translation = valid_global_poses[valid_i][:3,3]
+                    camera_extrinsics = valid_global_poses[valid_i][:3,:]
                     extrinsics = valid_global_poses[valid_i][:3,:3]
-                    pose[:3] = cv2.Rodrigues(np.dot(extrinsics, cv2.Rodrigues(pose[:3])[0]))[0].T[0]                      
+                    pose[:3] = cv2.Rodrigues(np.dot(extrinsics, cv2.Rodrigues(pose[:3])[0]))[0].T[0]
+                    transs = valid_trans[valid_i]
+                    
 
                     imgnames_.append(valid_img_names[valid_i])
                     centers_.append(center)
@@ -61,10 +72,20 @@ def pw3d_extract(dataset_path, out_path):
                     shapes_.append(valid_betas[valid_i])
                     genders_.append(gender)
                     parts_.append(part)
+                    camera_extrinsics_.append(camera_extrinsics)
+                    cam_intrinsics_.append(cam_intrinsics)
+                    joint_position_.append(joint_positions)
+                    bbox_.append(bbox)
+                    trans_.append(transs)
+
                     # translation_.append(translation)
 
     # store data
     # translation_ = np.array(translation_, dtype=object)
+    # print(cam_intrinsics_[0].shape)
+    # print(camera_extrinsics_[0].shape)
+    # print(joint_position_[0])
+    # print(len(trans_))
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
     out_file = os.path.join(out_path,
@@ -75,6 +96,12 @@ def pw3d_extract(dataset_path, out_path):
                        pose=poses_,
                        shape=shapes_,
                        gender=genders_,
+                       camera_extrinsics= camera_extrinsics_,
+                       camera_intrinsics = cam_intrinsics_,
+                       joint_position = joint_position_,
+                       bbox = bbox_,
+                       trans = trans_,
+                    #    global_pose = global_pose_,
                     #    translation=translation_,
                        )
 

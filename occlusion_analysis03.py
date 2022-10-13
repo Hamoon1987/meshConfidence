@@ -1,5 +1,5 @@
-# python3 occlusion_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=h36m-p2 --log_freq=20
-# This runs through whole dataset and generates the occluded images and error per joint
+# python3 occlusion_analysis03.py --checkpoint=data/model_checkpoint.pt --dataset=h36m-p2
+# This runs through whole dataset and moves the occlusion over each image and generates the occluded images and error per joint and as average
 import math
 import torch
 import argparse
@@ -16,43 +16,72 @@ import matplotlib.pylab as plt
 import os
 from utils.imutils import crop
 import itertools
+from utils.geometry import perspective_projection
 
-def get_occluded_imgs(img, occ_size, occ_pixel, occ_stride):
-    # The input is the image in batch=1 and moves the occluder over the image and generate new occluded images
-    # Input: torch.Size([1, 3, 224, 224])
-    # output: torch.Size([36, 1, 3, 224, 224])
-    img_size = int(img.shape[-1])
-    # Define number of occlusions in both dimensions
-    output_height = int(math.ceil((img_size - occ_size) / occ_stride + 1))
-    output_width = int(math.ceil((img_size - occ_size) / occ_stride + 1))
-
-    occ_img_list = []
-
-    idx_dict = {}
-    c = 0
-    for h in range(output_height):
-        for w in range(output_width):
-            # Occluder window:
-            h_start = h * occ_stride
-            w_start = w * occ_stride
-            h_end = min(img_size, h_start + occ_size)
-            w_end = min(img_size, w_start + occ_size)
-
-            # Getting the image copy, applying the occluding window:
-            occ_image = img.clone()
-            occ_image[:, :, h_start:h_end, w_start:w_end] = occ_pixel
-            occ_img_list.append(occ_image)
-
-            idx_dict[c] = (h,w)
-            c += 1
-    return torch.stack(occ_img_list, dim=0), idx_dict, output_height
+def get_occluded_imgs(batch, occ_size, occ_pixel, dataset_name, joint_idx, pred_camera):
+    # Get the image batch find the ground truth joint location and occlude it
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    gt_pose = batch['pose'].to(device)
+    gt_betas = batch['betas'].to(device)
+    images = batch['img'].to(device)
+    gender = batch['gender'].to(device)
+    # Load SMPL model
+    smpl_neutral = SMPL(config.SMPL_MODEL_DIR,
+                        create_transl=False).to(device)
+    smpl_male = SMPL(config.SMPL_MODEL_DIR,
+                     gender='male',
+                     create_transl=False).to(device)
+    smpl_female = SMPL(config.SMPL_MODEL_DIR,
+                       gender='female',
+                       create_transl=False).to(device)
+    # Preparing the regressor to map keypoints on to 14 joints
+    J_regressor = torch.from_numpy(np.load(config.JOINT_REGRESSOR_H36M)).float()
+    J_regressor = J_regressor.to(device)
+    joint_mapper_h36m = constants.H36M_TO_J17 if dataset_name == 'mpi-inf-3dhp' else constants.H36M_TO_J14
+    joint_mapper_gt = constants.J24_TO_J17 if dataset_name == 'mpi-inf-3dhp' else constants.J24_TO_J14
+    # Regressor broadcasting
+    J_regressor_batch = J_regressor[None, :].expand(images.shape[0], -1, -1).to(device)
+    # Get 14 ground truth joints
+    if 'h36m' in dataset_name or 'mpi-inf' in dataset_name:
+        gt_keypoints_3d = batch['pose_3d'].to(device)
+        gt_keypoints_3d = gt_keypoints_3d[:, joint_mapper_gt, :-1]
+    # For 3DPW get the 14 common joints from the rendered shape
+    else:
+        gt_vertices = smpl_male(global_orient=gt_pose[:,:3], body_pose=gt_pose[:,3:], betas=gt_betas).vertices 
+        gt_vertices_female = smpl_female(global_orient=gt_pose[:,:3], body_pose=gt_pose[:,3:], betas=gt_betas).vertices 
+        gt_vertices[gender==1, :, :] = gt_vertices_female[gender==1, :, :]
+        gt_keypoints_3d = torch.matmul(J_regressor_batch, gt_vertices)
+        gt_keypoints_3d = gt_keypoints_3d[:, joint_mapper_h36m, :]
+        print(gt_keypoints_3d)
+    # Project 3D keypoints to 2D keypoints
+    camera_center = torch.tensor([constants.IMG_RES // 2, constants.IMG_RES // 2])
+    camera_translation = torch.stack([pred_camera[:,1], pred_camera[:,2], 2*constants.FOCAL_LENGTH/(constants.IMG_RES * pred_camera[:,0] +1e-9)],dim=-1)
+    pred_keypoints_2d = perspective_projection(gt_keypoints_3d,
+                                                   rotation=torch.eye(3, device=device).unsqueeze(0).expand(1, -1, -1),
+                                                   translation=camera_translation,
+                                                   focal_length=constants.FOCAL_LENGTH,
+                                                   camera_center=camera_center)
+    pred_keypoints_2d = pred_keypoints_2d[0].cpu().numpy()
+    print(len(pred_keypoints_2d))
+    # De-normalizing the image
+    image = images
+    image = image * torch.tensor([0.229, 0.224, 0.225], device=image.device).reshape(1, 3, 1, 1)
+    image = image + torch.tensor([0.485, 0.456, 0.406], device=image.device).reshape(1, 3, 1, 1)
+    img = image[0].permute(1,2,0).cpu().numpy()
+    img = 255* img[:,:,::-1]
+    print(img.shape)
+    # for i in range(len(pred_keypoints_2d)):
+    i=12
+    cv2.circle(img, (int(pred_keypoints_2d[i][0]), int(pred_keypoints_2d[i][1])), 3, color = (255, 0, 0), thickness=-1)
+    cv2.imwrite("test3.jpg", img)
+    return 
 
 def visualize_grid(image, heatmap, batch_idx):
     # Gets the image and heatmap and combine the two and show the result for each joint
     # image -> Torch.Size([1, 3, 224, 224])
     # heatmap -> (6, 6, 14)
-    # De-normalizing the image
 
+    # De-normalizing the image
     image = image * torch.tensor([0.229, 0.224, 0.225], device=image.device).reshape(1, 3, 1, 1)
     image = image + torch.tensor([0.485, 0.456, 0.406], device=image.device).reshape(1, 3, 1, 1)
 
@@ -103,7 +132,7 @@ def visualize_grid(image, heatmap, batch_idx):
     plt.savefig(os.path.join('examples/', f'result_00_{batch_idx:05d}_mpjpe_hm.png'))
 
 def visualize_grid_mean(batch, heatmap, batch_idx, idx_dict, args):
-    output_size = 448
+    output_size = 480
     loader_size = batch['img'][0].shape[-1]
     img_orig = cv2.imread(batch['imgname'][0])
     center = batch['center'][0]
@@ -122,17 +151,15 @@ def visualize_grid_mean(batch, heatmap, batch_idx, idx_dict, args):
     # Put a box over the maximum
     heatmap_mean_org = orig_heatmap.mean(axis=2)
     heatmap_mean_org = 1000 * heatmap_mean_org
-    print(np.argmax(heatmap_mean_org))
     h = idx_dict[np.argmax(heatmap_mean_org)][0]
     w = idx_dict[np.argmax(heatmap_mean_org)][1]
-
     img_size = int(img_orig.shape[0])
-    occ_stride = args.stride * (output_size/loader_size)
-    occ_size = args.occ_size * (output_size/loader_size)
-    h_start = int(h * occ_stride)
-    w_start = int(w * occ_stride)
-    h_end = int(min(img_size, h_start + occ_size))
-    w_end = int(min(img_size, w_start + occ_size))
+    occ_stride = int(round(args.stride * (output_size/loader_size)))
+    occ_size = int(round(args.occ_size * (output_size/loader_size)))
+    h_start = h * occ_stride
+    w_start = w * occ_stride
+    h_end = min(img_size, h_start + occ_size)
+    w_end = min(img_size, w_start + occ_size)
     cv2.rectangle(img_orig, pt1=(w_start,h_start), pt2=(w_end,h_end), color=(255,0,0), thickness=2)
 
     plt.imshow(img_orig)
@@ -144,6 +171,8 @@ def run_dataset(args):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     # Load the dataloader
     dataset_name = args.dataset
+    occ_size = args.occ_size
+    occ_pixel = args.pixel
     dataset = BaseDataset(None, dataset_name, is_train=False)
     batch_size = args.batch_size
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
@@ -171,55 +200,37 @@ def run_dataset(args):
     joint_mapper_gt = constants.J24_TO_J17 if dataset_name == 'mpi-inf-3dhp' else constants.J24_TO_J14
 
     val_images_errors= []
-    
+    mpjpe = np.zeros(len(dataset))
+    mpjpe_occluded = np.zeros(len(dataset))
+    # mpjpe_per_joint = [[0] * 14] * (len(dataset))
     # for batch_idx, batch in enumerate(tqdm(data_loader, desc='Eval', total=len(data_loader))):
-    # for i in range(1):
-        # batch_idx =i
-        # batch = next(iter(data_loader))
-    batch_idx = 15
+    batch_idx = 10
     batch = next(itertools.islice(data_loader, batch_idx, None))
-    
-    print(batch['imgname'][0])
     images = batch['img']
-    per_mpjpe = get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_female, J_regressor, joint_mapper_h36m, joint_mapper_gt)
-    occluded_images, idx_dict, output_size = get_occluded_imgs(
-        images,
-        occ_size=args.occ_size,
-        occ_pixel=args.pixel,
-        occ_stride=args.stride
-    )
-    mpjpe_heatmap = np.zeros((output_size, output_size, 14))
+    curr_batch_size = images.shape[0]
+    error, pred_camera = get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_female, J_regressor, joint_mapper_h36m, joint_mapper_gt)
+    mpjpe[batch_idx * batch_size:batch_idx * batch_size + curr_batch_size] = error
+    # Get occluded images
+    joint_inx = 13
+    images_occlude = get_occluded_imgs(batch, occ_size, occ_pixel, dataset_name, joint_inx, pred_camera)
+        # batch['img'] = images_occlude
+        # error = get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_female, J_regressor, joint_mapper_h36m, joint_mapper_gt)
+        # mpjpe_occluded[batch_idx * batch_size:batch_idx * batch_size + curr_batch_size] = error
 
-    for occ_img_idx in tqdm(range(occluded_images.shape[0])):
-        batch['img'] = occluded_images[occ_img_idx]
-        per_mpjpe = get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_female, J_regressor, joint_mapper_h36m, joint_mapper_gt)
-        mpjpe_heatmap[idx_dict[occ_img_idx]] = per_mpjpe[0]
-        if occ_img_idx == 168:
-            print(per_mpjpe.mean() * 1000)
-            image = batch['img']
-            image = image * torch.tensor([0.229, 0.224, 0.225], device=image.device).reshape(1, 3, 1, 1)
-            image = image + torch.tensor([0.485, 0.456, 0.406], device=image.device).reshape(1, 3, 1, 1)
-            image = image[0].permute(1,2,0).cpu().numpy()
-            image = 255 * image[:,:,::-1]
-
-            cv2.imwrite('examples/occluded.jpg', image)
-    
-    visualize_grid_mean(batch, mpjpe_heatmap, batch_idx, idx_dict, args)
-    visualize_grid(images, mpjpe_heatmap, batch_idx)
-    
-    
-
-#     # Print intermediate results during evaluation
-#     if batch_idx % log_freq == log_freq - 1:
-#         print('MPJPE: ' + str(1000 * mpjpe[:batch_idx * batch_size].mean()))
-#         print()
-    #     # Print final results during evaluation
+        # # Print intermediate results during evaluation
+        # if batch_idx % log_freq == log_freq - 1:
+        #     mpjpe =  np.array([i.mean() for i in mpjpe_per_joint[:batch_idx * batch_size]])
+        #     print('MPJPE: ' + str(1000 * mpjpe[:batch_idx * batch_size].mean()))
+        #     print()
+    # Print final results during evaluation
     # print('*** Final Results ***')
     # print()
-    # print('mpjpe_org: ' + str(1000 * mpjpe_org.mean()))
+    # print('mpjpe: ' + str(1000 * mpjpe.mean()))
+    # print()
+    # print('mpjpe_occluded: ' + str(1000 * mpjpe_occluded.mean()))
     # print()
 
-        
+     
 
 
 def get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_female,
@@ -250,24 +261,24 @@ def get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_fe
         gt_keypoints_3d = torch.matmul(J_regressor_batch, gt_vertices)
         gt_pelvis = gt_keypoints_3d[:, [0],:].clone()
         gt_keypoints_3d = gt_keypoints_3d[:, joint_mapper_h36m, :]
-        gt_keypoints_3d = gt_keypoints_3d - gt_pelvis 
+        gt_keypoints_3d = gt_keypoints_3d - gt_pelvis
     # Get 14 predicted joints from the mesh
     pred_keypoints_3d = torch.matmul(J_regressor_batch, pred_vertices)
     pred_pelvis = pred_keypoints_3d[:, [0],:].clone()
     pred_keypoints_3d = pred_keypoints_3d[:, joint_mapper_h36m, :]
     pred_keypoints_3d = pred_keypoints_3d - pred_pelvis 
     # Absolute error (MPJPE)
-    # error = torch.sqrt(((pred_keypoints_3d - gt_keypoints_3d) ** 2).sum(dim=-1)).mean(dim=-1).cpu().numpy()
-    error = torch.sqrt(((pred_keypoints_3d - gt_keypoints_3d) ** 2).sum(dim=-1)).cpu().numpy()
-    return error
+    # error = torch.sqrt(((pred_keypoints_3d - gt_keypoints_3d) ** 2).sum(dim=-1)).cpu().numpy()
+    error = torch.sqrt(((pred_keypoints_3d - gt_keypoints_3d) ** 2).sum(dim=-1)).mean(dim=-1).cpu().numpy()
+    return error, pred_camera
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint', default=None) # Path to network checkpoint
-    parser.add_argument('--dataset', type=str, default='h36m-p2')  # Path of the input image
+    parser.add_argument('--dataset', type=str, default='3dpw')  # Path of the input image
     parser.add_argument('--occ_size', type=int, default='40')  # Size of occluding window
     parser.add_argument('--pixel', type=int, default='0')  # Occluding window - pixel values
-    parser.add_argument('--stride', type=int, default='5')  # Occlusion Stride
+    # parser.add_argument('--stride', type=int, default='20')  # Occlusion Stride
     parser.add_argument('--batch_size', default=1) # Batch size for testing
     parser.add_argument('--log_freq', default=50, type=int) # Frequency of printing intermediate results
     args = parser.parse_args()
