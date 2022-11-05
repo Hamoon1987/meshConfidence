@@ -26,7 +26,7 @@
 # scale = data['scale'][0]
 # img = crop(img, center, scale, (224, 224))
 # cv2.imwrite('test.jpg', img)
-
+import time
 import itertools
 from datasets import BaseDataset
 from torch.utils.data import DataLoader
@@ -37,6 +37,7 @@ from utils.imutils import transform
 # from utils.geometry import perspective_projection
 import numpy as np
 from tqdm import tqdm
+start = time.time()
 # Load the dataloader
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 dataset_name = '3dpw'
@@ -48,7 +49,7 @@ data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
 
 
-batch_idx = 200
+batch_idx = 0
 batch = next(itertools.islice(data_loader, batch_idx, None))
 P = torch.matmul(batch['camera_intrinsics'], batch['camera_extrinsics'])
 print(batch['imgname'])
@@ -97,7 +98,8 @@ img = 255 * img[:,:,::-1]
 for i in range(new_p.shape[1]):
     cv2.circle(img, (int(new_p[0][i][0]), int(new_p[0][i][1])), 3, color = (255, 0, 0), thickness=-1)
 cv2.imwrite('test02.jpg', img)
-
+end = time.time()
+print("Time: ", end - start)
 
 
 

@@ -121,12 +121,13 @@ if __name__ == '__main__':
         pred_rotmat, pred_betas, pred_camera = model(norm_img.to(device))
         pred_output = smpl(betas=pred_betas, body_pose=pred_rotmat[:,1:], global_orient=pred_rotmat[:,0].unsqueeze(1), pose2rot=False)
         pred_vertices = pred_output.vertices
-        
+    print(pred_rotmat.shape)
     # Calculate camera parameters for rendering
     camera_translation = torch.stack([pred_camera[:,1], pred_camera[:,2], 2*constants.FOCAL_LENGTH/(constants.IMG_RES * pred_camera[:,0] +1e-9)],dim=-1)
     camera_translation = camera_translation[0].cpu().numpy()
     pred_vertices = pred_vertices[0].cpu().numpy()
     img = img.permute(1,2,0).cpu().numpy()
+    print(img.shape)
 
     
     # Render parametric shape

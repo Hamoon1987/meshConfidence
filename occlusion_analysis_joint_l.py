@@ -1,5 +1,6 @@
-# python3 occlusion_analysis04.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
+# python3 occlusion_analysis_joint_l.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
 # This runs through whole dataset and moves the occlusion over each image and generates the occluded images and error per joint and as average
+import time
 import math
 import torch
 import argparse
@@ -65,7 +66,9 @@ def get_occluded_imgs(batch, occ_size, occ_pixel, dataset_name, joint_idx, log_f
         w_start = int(max(new_p[i, joint_idx, 0] - occ_size/2, 0))
         h_end = min(img_size, h_start + occ_size)
         w_end = min(img_size, w_start + occ_size)
-        occ_images[i,:,h_start:h_end, w_start:w_end] = occ_pixel
+        occ_images[i,0,h_start:h_end, w_start:w_end] = (occ_pixel - 0.485)/0.229
+        occ_images[i,1,h_start:h_end, w_start:w_end] = (occ_pixel - 0.456)/0.224
+        occ_images[i,2,h_start:h_end, w_start:w_end] = (occ_pixel - 0.406)/0.225
     
     # store the data struct
     if batch_idx % (10*log_freq) == (10*log_freq) - 1:
@@ -86,7 +89,7 @@ def get_occluded_imgs(batch, occ_size, occ_pixel, dataset_name, joint_idx, log_f
     return occ_images
 
 
-def run_dataset(args):
+def run_dataset(args, joint_index):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     # Load the dataloader
     dataset_name = args.dataset
@@ -122,24 +125,21 @@ def run_dataset(args):
     mpjpe = np.zeros(len(dataset))
     mpjpe_occluded = np.zeros(len(dataset))
     for batch_idx, batch in enumerate(tqdm(data_loader, desc='Eval', total=len(data_loader))):
-    # batch_idx = 0
-    # batch = next(itertools.islice(data_loader, batch_idx, None))
         images = batch['img'].to(device)
         curr_batch_size = images.shape[0]
-        # error = get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_female, J_regressor, joint_mapper_h36m, joint_mapper_gt)
-        # mpjpe[batch_idx * batch_size:batch_idx * batch_size + curr_batch_size] = error
         # Get occluded images
-        joint_inx = args.joint
+        # joint_inx = args.joint
+        joint_inx = joint_index
         occ_images = get_occluded_imgs(batch, occ_size, occ_pixel, dataset_name, joint_inx, log_freq, batch_idx)
         batch['img'] = occ_images
         error = get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_female, J_regressor, joint_mapper_h36m, joint_mapper_gt)
         mpjpe_occluded[batch_idx * batch_size:batch_idx * batch_size + curr_batch_size] = error
 
-        # Print intermediate results during evaluation
-        if batch_idx % log_freq == log_freq - 1:
-            # print('MPJPE: ' + str(1000 * mpjpe[:batch_idx * batch_size].mean()))
-            print('MPJPE_Occluded: ' + str(1000 * mpjpe_occluded[:batch_idx * batch_size].mean()))
-            print()
+        # # Print intermediate results during evaluation
+        # if batch_idx % log_freq == log_freq - 1:
+        #     # print('MPJPE: ' + str(1000 * mpjpe[:batch_idx * batch_size].mean()))
+        #     print('MPJPE_Occluded: ' + str(1000 * mpjpe_occluded[:batch_idx * batch_size].mean()))
+        #     print()
     # Print final results during evaluation
     print('*** Final Results ***')
     # print()
@@ -147,6 +147,7 @@ def run_dataset(args):
     # print()
     print('mpjpe_occluded: ' + str(1000 * mpjpe_occluded.mean()))
     print()
+    return 1000 * mpjpe_occluded.mean()
 
      
 
@@ -191,16 +192,23 @@ def get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_fe
     return error
     
 if __name__ == '__main__':
+    start = time.time()
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint', default=None) # Path to network checkpoint
     parser.add_argument('--dataset', type=str, default='3dpw')  # Path of the input image
     parser.add_argument('--occ_size', type=int, default='40')  # Size of occluding window
-    parser.add_argument('--pixel', type=int, default='0')  # Occluding window - pixel values
-    parser.add_argument('--joint', type=int, default='0')  
+    parser.add_argument('--pixel', type=int, default='1')  # Occluding window - pixel values
+    parser.add_argument('--joint', type=int, default='13')  
     """ Joint index    joint_names = ['Right Ankle','Right Knee', 'Right Hip','Left Hip','Left Knee','Left Ankle','Right Wrist','Right Elbow',
                                                     'Right Shoulder', 'Left Shoulder', 'Left Elbow', 'Left Wrist', 'Neck', 'Top of Head']"""
-    parser.add_argument('--batch_size', default=8) # Batch size for testing
+    parser.add_argument('--batch_size', default=16) # Batch size for testing
     parser.add_argument('--log_freq', default=50, type=int) # Frequency of printing intermediate results
     args = parser.parse_args()
-    run_dataset(args)
-    
+    mpjpe_occluded_list = []
+    for i in range(3,9):
+        joint_index = i
+        mpjpe_occluded = run_dataset(args, joint_index)
+        mpjpe_occluded_list.append(mpjpe_occluded)
+    print(mpjpe_occluded_list)
+    end = time.time()
+    print("Time: ", end - start)
