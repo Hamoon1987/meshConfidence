@@ -16,7 +16,7 @@ RUN pip3 install tensorboard future
 RUN pip3 install freetype-py pyglet
 
 WORKDIR /
-RUN git clone -b version01 https://github.com/Hamoon1987/SPINH.git
+RUN git clone -b computer_vision https://github.com/Hamoon1987/SPINH.git
 WORKDIR /SPINH
 RUN pip3 install -r requirements.txt
 RUN ./fetch_data.sh

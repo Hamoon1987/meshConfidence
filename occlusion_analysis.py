@@ -176,7 +176,7 @@ def run_dataset(args):
         # batch_idx =i
         # batch = next(iter(data_loader))
     # batch_idx = 2400
-    batch_idx = 3000
+    batch_idx = 0
     batch = next(itertools.islice(data_loader, batch_idx, None))
     print(batch['imgname'][0])
     images = batch['img']

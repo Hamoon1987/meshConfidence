@@ -194,25 +194,6 @@ def run_evaluation(model, dataset_name, dataset, result_file,
                 candidate_sorted_list.append(candidate_sorted_t)
             candidate_sorted_t = torch.stack(candidate_sorted_list, dim=0).to(device)
 
-            # # Normalize between -1 and 1
-            # candidate_sorted_t_n = torch.sub(candidate_sorted_t, (constants.IMG_RES/2))
-            # candidate_sorted_t_n = torch.div(candidate_sorted_t_n, (constants.IMG_RES/2))
-
-            # # Relative position
-            # left_heap = candidate_sorted_t_n[:,3:4,:].clone()
-            # left_heap = left_heap.expand(-1,14,-1)
-            # candidate_sorted_t_n = candidate_sorted_t_n - left_heap
-
-            # for i in range(subset_sorted.shape[0]): # OpenPose predicted keypoints (Blue)
-            #     cv2.circle(images_[0], (int(candidate_sorted_t[0][i][0]), int(candidate_sorted_t[0][i][1])), 3, color = (255, 0, 0), thickness=1)
-
-            # for i in range(pred_keypoints_2d.shape[1]): # SPIN predicted keypoints (Green)
-            #     cv2.circle(images_[0], (int(pred_keypoints_2d[0][i][0]), int(pred_keypoints_2d[0][i][1])), 3, color = (0, 255, 0), thickness=1)
-
-            # for i in range(new_p.shape[1]): # Label
-            #     cv2.circle(images_[0], (int(new_p[0][i][0]), int(new_p[0][i][1])), 3, color = (255, 255, 255), thickness=1)
-
-            # cv2.imwrite(f"op_sp_{step}.jpg", images_[0])
 
             # Absolute error SPIN (MPJPE)
             error = torch.sqrt(((pred_keypoints_3d[:, 6, :] - gt_keypoints_3d[:, 6, :]) ** 2).sum(dim=-1)).cpu().numpy()
@@ -240,25 +221,18 @@ def run_evaluation(model, dataset_name, dataset, result_file,
     print('sp_op: ' + str(1000 * sp_op.mean()))
     print()
 
-
-
     np.save('opCon01.npy', sp_op) # save
     np.save('mpjpe01.npy', mpjpe) # save
     my_rho = np.corrcoef(sp_op, mpjpe)
     print(my_rho)
 
-    # sp_op_norm = [float(i)/max(sp_op[:100]) for i in sp_op[:100]]
-    # mpjpe_norm = [float(i)/max(mpjpe[:100]) for i in mpjpe[:100]]
+
     fig, ax = plt.subplots(figsize = (9, 9))
     ax.scatter(sp_op, mpjpe)
     plt.xlabel('SPIN-OP',fontsize=18)
     plt.ylabel('SPIN-GT',fontsize=18)
     plt.xlim(left=0)
     plt.ylim(bottom=0)
-
-
-
-    
 
     def line_fitting_errors(x, data):
         m = x[0]
@@ -271,7 +245,6 @@ def run_evaluation(model, dataset_name, dataset, result_file,
     data = np.vstack([sp_op, mpjpe]).T
     n = data.shape[0]
 
-
     # Non-linear least square fitting
     from scipy.optimize import least_squares
     retval = least_squares(line_fitting_errors, theta_guess, loss='arctan', args=[data])
@@ -280,11 +253,6 @@ def run_evaluation(model, dataset_name, dataset, result_file,
     theta = retval['x']
     print(f'data = {n}')
     print(f'theta = {theta}')
-
-    # # Fit linear regression via least squares with numpy.polyfit
-    # # It returns an slope (b) and intercept (a)
-    # # deg=1 means linear fit (i.e. polynomial of degree 1)
-    # b, a = np.polyfit(sp_op[:1000], mpjpe[:1000], deg=1)
 
     # Create sequence of 100 numbers from 0 to 100 
     xseq = np.linspace(0, 1, num=4)
