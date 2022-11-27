@@ -32,11 +32,11 @@ class Renderer:
         rend_imgs = make_grid(rend_imgs, nrow=2)
         return rend_imgs
 
-    def __call__(self, vertices, camera_translation, image):
+    def __call__(self, vertices, camera_translation, image, color):
         material = pyrender.MetallicRoughnessMaterial(
             metallicFactor=0.2,
             alphaMode='OPAQUE',
-            baseColorFactor=(0.8, 0.3, 0.3, 1.0))
+            baseColorFactor=color)
 
         camera_translation[0] *= -1.
 

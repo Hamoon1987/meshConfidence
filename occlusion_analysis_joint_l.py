@@ -1,5 +1,6 @@
 # python3 occlusion_analysis_joint_l.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
 # This runs through whole dataset and moves the occlusion over each image and generates the occluded images and error per joint and as average
+# This code uses camera parameters to project the GT 3d joint positions
 import time
 import math
 import torch

@@ -1,5 +1,6 @@
 # python3 occlusion_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
-# This runs through whole dataset and moves the occlusion over each image and generates the occluded images and error per joint and as average
+# This can run through whole dataset and moves the occlusion over each image and generates the occluded images and error per joint and as average
+# Gets one image and moves the occluder
 import math
 import torch
 import argparse
@@ -175,7 +176,7 @@ def run_dataset(args):
         # batch_idx =i
         # batch = next(iter(data_loader))
     # batch_idx = 2400
-    batch_idx = 26893
+    batch_idx = 3000
     batch = next(itertools.islice(data_loader, batch_idx, None))
     print(batch['imgname'][0])
     images = batch['img']

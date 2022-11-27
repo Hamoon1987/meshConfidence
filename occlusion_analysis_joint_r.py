@@ -1,5 +1,6 @@
-# python3 occlusion_analysis05.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
+# python3 occlusion_analysis_joint_r.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
 # This runs through whole dataset and moves the occlusion over each image and generates the occluded images and error per joint and as average
+# This code uses the GT mesh and regress the joint position using weak perspective
 import math
 import torch
 import argparse

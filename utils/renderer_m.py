@@ -10,7 +10,7 @@ from matplotlib import cm as mpl_cm, colors as mpl_colors
 
 
 
-class Renderer:
+class Renderer_m:
     """
     Renderer used for visualizing the SMPL model
     Code adapted from https://github.com/vchoutas/smplify-x
@@ -97,7 +97,7 @@ class Renderer:
             
             vertex_colors = np.ones((n_vertices, 4))
             vertex_colors[:, 3] = alpha
-            cm = mpl_cm.get_cmap('jet')
+            cm = mpl_cm.get_cmap('jet_r')
             norm_gt = mpl_colors.Normalize()
             vertex_colors[:, :3] = cm(norm_gt(vertex_labels))[:, :3]
 

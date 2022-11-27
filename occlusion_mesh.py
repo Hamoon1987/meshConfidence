@@ -1,12 +1,13 @@
-
+# python3 occlusion_mesh
+# This code projects a predefined error array on the mesh and changes the colors accordingly
 import torch
 from models import SMPL
-from utils.renderer_m import Renderer
+from utils.renderer_m import Renderer_m
 import config
 import constants
 import numpy as np
 import cv2
-
+import matplotlib.pylab as plt
 
 """ Joint index    joint_names = ['Right Ankle','Right Knee', 'Right Hip','Left Hip','Left Knee','Left Ankle','Right Wrist','Right Elbow',
                                                     'Right Shoulder', 'Left Shoulder', 'Left Elbow', 'Left Wrist', 'Neck', 'Top of Head']"""
@@ -29,7 +30,7 @@ smpl = SMPL(config.SMPL_MODEL_DIR,
             create_transl=False).to(device)
 
 # Setup renderer for visualization
-renderer = Renderer(focal_length=constants.FOCAL_LENGTH, img_res=img_res, faces=smpl.faces)
+renderer = Renderer_m(focal_length=constants.FOCAL_LENGTH, img_res=img_res, faces=smpl.faces)
 
 
 # Preprocess input image and generate predictions
@@ -46,5 +47,10 @@ img = np.zeros((img_res, img_res, 3))
 
 # Render parametric shape
 img_mesh = renderer(pred_vertices, camera_translation, img, error_joint)
+img_mesh = 255 * img_mesh[:,:,::-1]
 # Save reconstructions
-cv2.imwrite('test.png', 255 * img_mesh[:,:,::-1])
+# cv2.imwrite('test.png', 255 * img_mesh[:,:,::-1])
+plt.imshow(img_mesh)
+# plt.imshow(img_mesh, alpha=1, cmap='jet', interpolation='none')
+plt.colorbar()
+plt.savefig('examples/mpjpe_mean.png')

@@ -36,13 +36,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', default=None, help='Path to network checkpoint')
 parser.add_argument('--dataset', default='h36m-p1', choices=['h36m-p1', 'h36m-p2', 'lsp', '3dpw', 'mpi-inf-3dhp'], help='Choose evaluation dataset')
 parser.add_argument('--log_freq', default=50 , type=int, help='Frequency of printing intermediate results')
-parser.add_argument('--batch_size', default=32, help='Batch size for testing')
+parser.add_argument('--batch_size', default=1, help='Batch size for testing')
 parser.add_argument('--shuffle', default=False, action='store_true', help='Shuffle data')
 parser.add_argument('--num_workers', default=0, type=int, help='Number of processes for data loading')
 parser.add_argument('--result_file', default=None, help='If set, save detections to a .npz file')
 
 def run_evaluation(model, dataset_name, dataset, result_file,
-                   batch_size=32, img_res=224, 
+                   batch_size=1, img_res=224, 
                    num_workers=0, shuffle=False, log_freq=50):
     """Run evaluation on the datasets and metrics we report in the paper. """
 
@@ -123,6 +123,8 @@ def run_evaluation(model, dataset_name, dataset, result_file,
     # Iterate over the entire dataset
     for step, batch in enumerate(tqdm(data_loader, desc='Eval', total=len(data_loader))):
         # Get ground truth annotations from the batch
+        if step == 2:
+            break
         gt_pose = batch['pose'].to(device)
         gt_betas = batch['betas'].to(device)
         gt_vertices = smpl_neutral(betas=gt_betas, body_pose=gt_pose[:, 3:], global_orient=gt_pose[:, :3]).vertices
@@ -172,7 +174,7 @@ def run_evaluation(model, dataset_name, dataset, result_file,
             pred_keypoints_3d = pred_keypoints_3d - pred_pelvis 
 
             # Absolute error (MPJPE)
-            error = torch.sqrt(((pred_keypoints_3d - gt_keypoints_3d) ** 2).sum(dim=-1)).mean(dim=-1).cpu().numpy()
+            error = torch.sqrt(((pred_keypoints_3d[:, 6, :] - gt_keypoints_3d[:, 6, :]) ** 2).sum(dim=-1)).mean(dim=-1).cpu().numpy()
             mpjpe[step * batch_size:step * batch_size + curr_batch_size] = error
 
             # Reconstuction_error
