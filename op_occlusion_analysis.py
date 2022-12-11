@@ -1,5 +1,5 @@
-# python3 occlusion_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --img_number=0
-# This can run through whole dataset and moves the occlusion over each image and generates the occluded images and SPIN error per joint and as average
+# python3 op_occlusion_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
+# This can run through whole dataset and moves the occlusion over each image and generates the occluded images and OpenPose error per joint and as average
 # Gets one image and moves the occluder
 import math
 import torch
@@ -17,6 +17,18 @@ import matplotlib.pylab as plt
 import os
 from utils.imutils import crop
 import itertools
+from pytorchopenpose.src.body import Body
+from utils.imutils import transform
+
+
+def denormalize(images):
+    # De-normalizing the image
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    images = images * torch.tensor([0.229, 0.224, 0.225], device=device).reshape(1, 3, 1, 1)
+    images = images + torch.tensor([0.485, 0.456, 0.406], device=device).reshape(1, 3, 1, 1)
+    images = images.permute(0, 2, 3, 1).cpu().numpy()
+    images = 255 * images[:, :,:,::-1]
+    return images
 
 def get_occluded_imgs(img, occ_size, occ_pixel, occ_stride):
     # The input is the image in batch=1 and moves the occluder over the image and generate new occluded images
@@ -48,7 +60,7 @@ def get_occluded_imgs(img, occ_size, occ_pixel, occ_stride):
             c += 1
     return torch.stack(occ_img_list, dim=0), idx_dict, output_height
 
-def visualize_grid(image, heatmap, img_number):
+def visualize_grid(image, heatmap, batch_idx):
     # Gets the image and heatmap and combine the two and show the result for each joint
     # image -> Torch.Size([1, 3, 224, 224])
     # heatmap -> (6, 6, 14)
@@ -101,9 +113,9 @@ def visualize_grid(image, heatmap, img_number):
         axarr[jid // w, jid % w].imshow(heatmap[:,:,jid], alpha=0.3, cmap='jet', interpolation='none')
 
     f.set_tight_layout(tight=True)
-    plt.savefig(os.path.join('heatmap/', f'result_00_{img_number:05d}_mpjpe_hm.png'))
+    plt.savefig(os.path.join('heatmap/', f'op_result_00_{batch_idx:05d}_mpjpe_hm.png'))
 
-def visualize_grid_mean(batch, heatmap, img_number, idx_dict, args):
+def visualize_grid_mean(batch, heatmap, batch_idx, idx_dict, args):
     output_size = 480
     loader_size = batch['img'][0].shape[-1]
     img_orig = cv2.imread(batch['imgname'][0])
@@ -137,7 +149,7 @@ def visualize_grid_mean(batch, heatmap, img_number, idx_dict, args):
     plt.imshow(img_orig)
     plt.imshow(heatmap_mean, alpha=0.5, cmap='jet', interpolation='none')
     plt.colorbar(label="MPJPE (mm)")
-    plt.savefig(os.path.join('heatmap/', f'result_00_{img_number:05d}_mpjpe_mean.png'))
+    plt.savefig(os.path.join('heatmap/', f'op_result_00_{batch_idx:05d}_mpjpe_mean.png'))
 
 def run_dataset(args):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -146,29 +158,15 @@ def run_dataset(args):
     dataset = BaseDataset(None, dataset_name, is_train=False)
     batch_size = args.batch_size
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    # MPJPE error for the non-parametric and parametric shapes
+    mpjpe_org = np.zeros(len(dataset))
+    log_freq = args.log_freq
     # Load the model
-    model = hmr(config.SMPL_MEAN_PARAMS)
-    checkpoint = torch.load(args.checkpoint, map_location=device)
-    model.load_state_dict(checkpoint['model'], strict=False)
-    model.eval()
-    model.to(device)
-    # Load SMPL model
-    smpl_neutral = SMPL(config.SMPL_MODEL_DIR,
-                        create_transl=False).to(device)
-    smpl_male = SMPL(config.SMPL_MODEL_DIR,
-                     gender='male',
-                     create_transl=False).to(device)
-    smpl_female = SMPL(config.SMPL_MODEL_DIR,
-                       gender='female',
-                       create_transl=False).to(device)
-    # Regressor for H36m joints
-    J_regressor = torch.from_numpy(np.load(config.JOINT_REGRESSOR_H36M)).float()
-    joint_mapper_h36m = constants.H36M_TO_J17 if dataset_name == 'mpi-inf-3dhp' else constants.H36M_TO_J14
-    joint_mapper_gt = constants.J24_TO_J17 if dataset_name == 'mpi-inf-3dhp' else constants.J24_TO_J14
-    
-    # img_number = 21452
-    img_number = args.img_number
-    batch = next(itertools.islice(data_loader, img_number, None))
+    body_estimation_model = Body('pytorchopenpose/model/body_pose_model.pth')
+    val_images_errors= []
+    batch_idx = 21452
+    # batch_idx = 0
+    batch = next(itertools.islice(data_loader, batch_idx, None))
     print(batch['imgname'][0])
     images = batch['img']
     occluded_images, idx_dict, output_size = get_occluded_imgs(
@@ -181,49 +179,103 @@ def run_dataset(args):
 
     for occ_img_idx in tqdm(range(occluded_images.shape[0])):
         batch['img'] = occluded_images[occ_img_idx]
-        per_mpjpe = get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_female, J_regressor, joint_mapper_h36m, joint_mapper_gt)
+        per_mpjpe = get_error(batch, body_estimation_model)
         mpjpe_heatmap[idx_dict[occ_img_idx]] = per_mpjpe[0]
     
-    visualize_grid_mean(batch, mpjpe_heatmap, img_number, idx_dict, args)
-    visualize_grid(images, mpjpe_heatmap, img_number)
+    visualize_grid_mean(batch, mpjpe_heatmap, batch_idx, idx_dict, args)
+    visualize_grid(images, mpjpe_heatmap, batch_idx)
+      
 
 
-def get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_female,
-                J_regressor, joint_mapper_h36m, joint_mapper_gt):
+def get_error(batch, body_estimation_model):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    # Get ground truth annotations from the batch
-    gt_pose = batch['pose'].to(device)
-    gt_betas = batch['betas'].to(device)
-    gt_vertices = smpl_neutral(betas=gt_betas, body_pose=gt_pose[:, 3:], global_orient=gt_pose[:, :3]).vertices
-    images = batch['img'].to(device)
-    gender = batch['gender'].to(device)
-        
-    with torch.no_grad():
-        pred_rotmat, pred_betas, pred_camera = model(images)
-        pred_output = smpl_neutral(betas=pred_betas, body_pose=pred_rotmat[:,1:], global_orient=pred_rotmat[:,0].unsqueeze(1), pose2rot=False)
-        pred_vertices = pred_output.vertices
-    # Regressor broadcasting
-    J_regressor_batch = J_regressor[None, :].expand(pred_vertices.shape[0], -1, -1).to(device)
+    # Get the ground truth position of joints
+    camera_intrinsics = batch['camera_intrinsics'].to(device)
+    camera_extrinsics = batch['camera_extrinsics'].to(device)
+    joint_position = batch['joint_position'].to(device)
+    joint_position = joint_position.reshape(-1, 24, 3)
+    batch_size = joint_position.shape[0]
+    # Preparing the regressor to map 24 3DPW keypoints on to 14 joints
+    joint_mapper = [8, 5, 2, 1, 4, 7, 21, 19, 17,16, 18, 20, 12, 15]
     # Get 14 ground truth joints
-    if 'h36m' in dataset_name or 'mpi-inf' in dataset_name:
-        gt_keypoints_3d = batch['pose_3d'].to(device)
-        gt_keypoints_3d = gt_keypoints_3d[:, joint_mapper_gt, :-1]
-    # For 3DPW get the 14 common joints from the rendered shape
-    else:
-        gt_vertices = smpl_male(global_orient=gt_pose[:,:3], body_pose=gt_pose[:,3:], betas=gt_betas).vertices 
-        gt_vertices_female = smpl_female(global_orient=gt_pose[:,:3], body_pose=gt_pose[:,3:], betas=gt_betas).vertices 
-        gt_vertices[gender==1, :, :] = gt_vertices_female[gender==1, :, :]
-        gt_keypoints_3d = torch.matmul(J_regressor_batch, gt_vertices)
-        gt_pelvis = gt_keypoints_3d[:, [0],:].clone()
-        gt_keypoints_3d = gt_keypoints_3d[:, joint_mapper_h36m, :]
-        gt_keypoints_3d = gt_keypoints_3d - gt_pelvis 
-    # Get 14 predicted joints from the mesh
-    pred_keypoints_3d = torch.matmul(J_regressor_batch, pred_vertices)
-    pred_pelvis = pred_keypoints_3d[:, [0],:].clone()
-    pred_keypoints_3d = pred_keypoints_3d[:, joint_mapper_h36m, :]
-    pred_keypoints_3d = pred_keypoints_3d - pred_pelvis 
+    joint_position = joint_position[:, joint_mapper, :]
+
+    # Project 3D keypoints to 2D keypoints
+    # Homogenious real world coordinates X, P is the projection matrix
+    P = torch.matmul(camera_intrinsics, camera_extrinsics).to(device)
+    temp = torch.ones((batch_size, 14, 1)).double().to(device)
+    X = torch.cat((joint_position, temp), 2)
+    X = X.permute(0, 2, 1)
+    p = torch.matmul(P, X)
+    p = torch.div(p[:,:,:], p[:,2:3,:])
+    p = p[:, [0,1], :]
+    # Projected 2d coordinates on image p with the shape of (batch_size, 14, 2)
+    p = p.permute(0, 2, 1).cpu().numpy()
+    # Process 2d keypoints to match the processed images in the dataset
+    center = batch['center'].to(device)
+    scale = batch['scale'].to(device)
+    res = [constants.IMG_RES, constants.IMG_RES]
+    gt_keypoints_2d = np.ones((batch_size,14,2))
+    for i in range(batch_size):
+        for j in range(p.shape[1]):
+            temp = transform(p[i,j:j+1,:][0], center[i], scale[i], res, invert=0, rot=0)
+            gt_keypoints_2d[i,j,:] = temp
+    gt_keypoints_2d = torch.tensor(gt_keypoints_2d, device=device, dtype=torch.float)
+
+
+    # Get the OpenPose prediction for joint positions
+    occ_images = denormalize(batch['img'].to(device))
+    curr_batch_size = occ_images.shape[0]
+    candidate_sorted_list = []
+    for i in range(curr_batch_size):
+        candidate, subset = body_estimation_model(occ_images[i])
+        if subset.shape[0] == 0:
+            a = np.zeros((14,2))
+            candidate_sorted_list.append(torch.tensor(a, dtype=torch.float))
+            continue
+        # Map openpose to smpl 14 joints
+        map_op_smpl = [10, 9, 8, 11, 12, 13, 4, 3, 2, 5, 6, 7, 1, 0]
+        # Choose the right person in multiple people images for OpenPose
+        subset_error = []
+        for j in range(subset.shape[0]):
+            subset_sorted = subset[j][map_op_smpl].astype(int)
+            candidate = np.vstack([candidate, [constants.IMG_RES/2, constants.IMG_RES/2, 0, -1]])
+            candidate_sorted = candidate[subset_sorted]
+            candidate_sorted_t = torch.tensor(candidate_sorted[:,:2], dtype=torch.float).to(device)
+            error_s = torch.sqrt(((gt_keypoints_2d[i] - candidate_sorted_t) ** 2).sum(dim=-1)).mean(dim=-1).cpu().numpy()
+            subset_error.append(error_s)
+        subset_index = subset_error.index(min(subset_error))        
+        subset_sorted = subset[subset_index][map_op_smpl].astype(int)
+        candidate = np.vstack([candidate, [constants.IMG_RES/2, constants.IMG_RES/2, 0, -1]])
+        candidate_sorted = candidate[subset_sorted]
+        candidate_sorted_t = torch.tensor(candidate_sorted[:,:2], dtype=torch.float)
+        candidate_sorted_list.append(candidate_sorted_t)
+    candidate_sorted_t = torch.stack(candidate_sorted_list, dim=0).to(device)
+
+    # #test
+    # img = batch['img']
+    # img = denormalize(img.to(device))
+    # # gt_keypoints_2d = gt_keypoints_2d.cpu().numpy()
+    # for i in range(candidate_sorted_t.shape[1]):
+    #     cv2.circle(img[0], (int(candidate_sorted_t[0][i][0]), int(candidate_sorted_t[0][i][1])), 3, color = (255, 0, 0), thickness=1) #openpose
+    # cv2.imwrite('examples/test.png', img[0])
+    
+    # Normalize between -1 and 1
+    gt_keypoints_2d = torch.sub(gt_keypoints_2d, (constants.IMG_RES/2))
+    gt_keypoints_2d = torch.div(gt_keypoints_2d, (constants.IMG_RES/2))
+    # Relative position
+    left_heap = gt_keypoints_2d[:,3:4,:].clone()
+    left_heap = left_heap.expand(-1,14,-1)
+    gt_keypoints_2d = gt_keypoints_2d - left_heap   
+    # Normalize between -1 and 1
+    candidate_sorted_t = torch.sub(candidate_sorted_t, (constants.IMG_RES/2))
+    candidate_sorted_t = torch.div(candidate_sorted_t, (constants.IMG_RES/2))
+    # Relative position
+    left_heap = candidate_sorted_t[:,3:4,:].clone()
+    left_heap = left_heap.expand(-1,14,-1)
+    candidate_sorted_t = candidate_sorted_t - left_heap
     # Absolute error (MPJPE)
-    error = torch.sqrt(((pred_keypoints_3d - gt_keypoints_3d) ** 2).sum(dim=-1)).cpu().numpy()
+    error = torch.sqrt(((candidate_sorted_t - gt_keypoints_2d) ** 2).sum(dim=-1)).cpu().numpy()
     return error
     
 if __name__ == '__main__':
@@ -235,7 +287,6 @@ if __name__ == '__main__':
     parser.add_argument('--stride', type=int, default='20')  # Occlusion Stride
     parser.add_argument('--batch_size', default=1) # Batch size for testing
     parser.add_argument('--log_freq', default=50, type=int) # Frequency of printing intermediate results
-    parser.add_argument('--img_number', default=0, type=int) # the image number in 3DPW dataset that you want to investigate
     args = parser.parse_args()
     run_dataset(args)
     

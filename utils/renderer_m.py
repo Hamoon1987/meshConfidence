@@ -97,7 +97,7 @@ class Renderer_m:
             
             vertex_colors = np.ones((n_vertices, 4))
             vertex_colors[:, 3] = alpha
-            cm = mpl_cm.get_cmap('jet_r')
+            cm = mpl_cm.get_cmap('jet')
             norm_gt = mpl_colors.Normalize()
             vertex_colors[:, :3] = cm(norm_gt(vertex_labels))[:, :3]
 

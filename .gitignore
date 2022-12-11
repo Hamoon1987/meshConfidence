@@ -140,7 +140,6 @@ logs/
 # vim swap files
 *.swp
 *.pyc
-
 # data files
 data/*
 occluded_images/*

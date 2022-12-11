@@ -1,8 +1,8 @@
 """
-Predict the 2d location of an specific joint with SPIN and OpenPose. Compare the difference and SPIN Error
+Occludes a joint, then predicts the 2d location of an specific joint with SPIN and OpenPose. Compare the difference and SPIN Error
 Example usage:
 ```
-python3 op_spv.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --log_freq=20
+python3 occ_op_sp.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --log_freq=20
 ```
 Running the above command will compute the MPJPE and Reconstruction Error on the Human3.6M dataset (Protocol I). The ```--dataset``` option can take different values based on the type of evaluation you want to perform:
 1. Human3.6M Protocol 1 ```--dataset=h36m-p1```
@@ -22,7 +22,6 @@ import json
 from collections import namedtuple
 from tqdm import tqdm
 import torchgeometry as tgm
-
 import config
 import constants
 from models import hmr, SMPL
@@ -45,6 +44,81 @@ parser.add_argument('--batch_size', default=32, help='Batch size for testing')
 parser.add_argument('--shuffle', default=False, action='store_true', help='Shuffle data')
 parser.add_argument('--num_workers', default=0, type=int, help='Number of processes for data loading')
 parser.add_argument('--result_file', default=None, help='If set, save detections to a .npz file')
+parser.add_argument('--occ_size', type=int, default='40')  # Size of occluding window
+parser.add_argument('--pixel', type=int, default='1')  # Occluding window - pixel values
+parser.add_argument('--occ_joint', type=int, default='6')  # The joint you want to occlude
+parser.add_argument('--error_joint', type=int, default='6')  # The joint you want to calculate the error for
+
+def get_occluded_imgs(batch, args, batch_idx):
+    # Get the image batch find the ground truth joint location and occlude it. This file uses the ground truth 3d joint
+    # positions and projects them.
+    occ_size = args.occ_size
+    occ_pixel = args.occ_size
+    joint_idx = args.occ_joint
+    log_freq = args.log_freq
+    # Prepare the required parameters
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    camera_intrinsics = batch['camera_intrinsics'].to(device)
+    camera_extrinsics = batch['camera_extrinsics'].to(device)
+    joint_position = batch['joint_position'].to(device)
+    joint_position = joint_position.reshape(-1, 24, 3)
+    batch_size = joint_position.shape[0]
+    # Preparing the regressor to map 24 3DPW keypoints on to 14 joints
+    joint_mapper = [8, 5, 2, 1, 4, 7, 21, 19, 17,16, 18, 20, 12, 15]
+    # Get 14 ground truth joints
+    joint_position = joint_position[:, joint_mapper, :]
+
+    # Project 3D keypoints to 2D keypoints
+    # Homogenious real world coordinates X, P is the projection matrix
+    P = torch.matmul(camera_intrinsics, camera_extrinsics).to(device)
+    temp = torch.ones((batch_size, 14, 1)).double().to(device)
+    X = torch.cat((joint_position, temp), 2)
+    X = X.permute(0, 2, 1)
+    p = torch.matmul(P, X)
+    p = torch.div(p[:,:,:], p[:,2:3,:])
+    p = p[:, [0,1], :]
+    # Projected 2d coordinates on image p with the shape of (batch_size, 14, 2)
+    p = p.permute(0, 2, 1).cpu().numpy()
+    # Process 2d keypoints to match the processed images in the dataset
+    center = batch['center'].to(device)
+    scale = batch['scale'].to(device)
+    res = [constants.IMG_RES, constants.IMG_RES]
+    new_p = np.ones((batch_size,14,2))
+    for i in range(batch_size):
+        for j in range(p.shape[1]):
+            temp = transform(p[i,j:j+1,:][0], center[i], scale[i], res, invert=0, rot=0)
+            new_p[i,j,:] = temp
+    # Occlude the Images at the joint position
+    images = batch['img'].to(device)
+    # new_p = new_p.cpu().numpy()
+    occ_images = images.clone()
+    img_size = int(images[0].shape[-1])
+    for i in range(batch_size):
+        h_start = int(max(new_p[i, joint_idx, 1] - occ_size/2, 0))
+        w_start = int(max(new_p[i, joint_idx, 0] - occ_size/2, 0))
+        h_end = min(img_size, h_start + occ_size)
+        w_end = min(img_size, w_start + occ_size)
+        occ_images[i,0,h_start:h_end, w_start:w_end] = occ_pixel 
+        occ_images[i,1,h_start:h_end, w_start:w_end] = occ_pixel
+        occ_images[i,2,h_start:h_end, w_start:w_end] = occ_pixel
+    
+    # store the data struct
+    if batch_idx % (10*log_freq) == (10*log_freq) - 1:
+        out_path = "occluded_images"
+        if not os.path.isdir(out_path):
+            os.makedirs(out_path)
+        image = occ_images[0]
+        # De-normalizing the image
+        image = image * torch.tensor([0.229, 0.224, 0.225], device=image.device).reshape(1, 3, 1, 1)
+        image = image + torch.tensor([0.485, 0.456, 0.406], device=image.device).reshape(1, 3, 1, 1)
+        # Preparing the image for visualization
+        img = image[0].permute(1,2,0).cpu().numpy().copy()
+        img = 255 * img[:,:,::-1]
+        cv2.imwrite(os.path.join(out_path, f'occluded_{joint_idx}_{batch_idx:05d}.jpg'), img)
+
+    return occ_images
+
+
 
 def run_evaluation(model, dataset_name, dataset, result_file,
                    batch_size=32, img_res=224, 
@@ -88,9 +162,7 @@ def run_evaluation(model, dataset_name, dataset, result_file,
     # Choose appropriate evaluation for each dataset
     if dataset_name == 'h36m-p1' or dataset_name == 'h36m-p2' or dataset_name == '3dpw' or dataset_name == 'mpi-inf-3dhp':
         eval_pose = True
-
     joint_mapper_h36m = constants.H36M_TO_J17 if dataset_name == 'mpi-inf-3dhp' else constants.H36M_TO_J14
-    joint_mapper_gt = constants.J24_TO_J17 if dataset_name == 'mpi-inf-3dhp' else constants.J24_TO_J14
     # Iterate over the entire dataset
     for step, batch in enumerate(tqdm(data_loader, desc='Eval', total=len(data_loader))):
         # if step == 10:
@@ -102,10 +174,12 @@ def run_evaluation(model, dataset_name, dataset, result_file,
         gt_pose = batch['pose'].to(device)
         gt_betas = batch['betas'].to(device)
         gt_vertices = smpl_neutral(betas=gt_betas, body_pose=gt_pose[:, 3:], global_orient=gt_pose[:, :3]).vertices
-        images = batch['img'].to(device)
         gender = batch['gender'].to(device)
+        # Get occluded images
+        occ_images = get_occluded_imgs(batch, args, step)
+        batch['img'] = occ_images
+        images = batch['img'].to(device)
         curr_batch_size = images.shape[0]
-        
         with torch.no_grad():
             pred_rotmat, pred_betas, pred_camera = model(images)
             pred_output = smpl_neutral(betas=pred_betas, body_pose=pred_rotmat[:,1:], global_orient=pred_rotmat[:,0].unsqueeze(1), pose2rot=False)
@@ -203,23 +277,14 @@ def run_evaluation(model, dataset_name, dataset, result_file,
             left_heap = left_heap.expand(-1,14,-1)
             candidate_sorted_t_n = candidate_sorted_t_n - left_heap
 
-            # for i in range(subset_sorted.shape[0]): # OpenPose predicted keypoints (Blue)
-            #     cv2.circle(images_[0], (int(candidate_sorted_t[0][i][0]), int(candidate_sorted_t[0][i][1])), 3, color = (255, 0, 0), thickness=1)
-
-            # for i in range(pred_keypoints_2d.shape[1]): # SPIN predicted keypoints (Green)
-            #     cv2.circle(images_[0], (int(pred_keypoints_2d[0][i][0]), int(pred_keypoints_2d[0][i][1])), 3, color = (0, 255, 0), thickness=1)
-
-            # for i in range(new_p.shape[1]): # Label
-            #     cv2.circle(images_[0], (int(new_p[0][i][0]), int(new_p[0][i][1])), 3, color = (255, 255, 255), thickness=1)
-
-            # cv2.imwrite(f"op_sp_{step}.jpg", images_[0])
 
             # Absolute error SPIN (MPJPE)
-            error = torch.sqrt(((pred_keypoints_3d[:, 6, :] - gt_keypoints_3d[:, 6, :]) ** 2).sum(dim=-1)).cpu().numpy()
+            error_joint = args.error_joint
+            error = torch.sqrt(((pred_keypoints_3d[:, error_joint, :] - gt_keypoints_3d[:, error_joint, :]) ** 2).sum(dim=-1)).cpu().numpy()
             mpjpe[step * batch_size:step * batch_size + curr_batch_size] = error
 
             # SPIN - OpenPose (sp_op)
-            error_ = torch.sqrt(((pred_keypoints_2d_n[:, 6, :] - candidate_sorted_t_n[:, 6, :]) ** 2).sum(dim=-1)).cpu().numpy()
+            error_ = torch.sqrt(((pred_keypoints_2d_n[:, error_joint, :] - candidate_sorted_t_n[:, error_joint, :]) ** 2).sum(dim=-1)).cpu().numpy()
             sp_op[step * batch_size:step * batch_size + curr_batch_size] = error_
 
 
@@ -241,13 +306,12 @@ def run_evaluation(model, dataset_name, dataset, result_file,
 
 
 
-    np.save('sp_op.npy', sp_op) # save
-    np.save('mpjpe.npy', mpjpe) # save
+    np.save('occ_ed.npy', sp_op) # save
+    np.save('occ_se.npy', mpjpe) # save
     my_rho = np.corrcoef(sp_op, mpjpe)
     print(my_rho)
 
-    # sp_op_norm = [float(i)/max(sp_op[:100]) for i in sp_op[:100]]
-    # mpjpe_norm = [float(i)/max(mpjpe[:100]) for i in mpjpe[:100]]
+
     fig, ax = plt.subplots(figsize = (9, 9))
     ax.scatter(sp_op, mpjpe)
     plt.xlabel('SPIN-OP',fontsize=18)
@@ -255,9 +319,6 @@ def run_evaluation(model, dataset_name, dataset, result_file,
     plt.xlim(left=0)
     plt.ylim(bottom=0)
 
-
-
-    
 
     def line_fitting_errors(x, data):
         m = x[0]
@@ -280,12 +341,7 @@ def run_evaluation(model, dataset_name, dataset, result_file,
     print(f'data = {n}')
     print(f'theta = {theta}')
 
-    # # Fit linear regression via least squares with numpy.polyfit
-    # # It returns an slope (b) and intercept (a)
-    # # deg=1 means linear fit (i.e. polynomial of degree 1)
-    # b, a = np.polyfit(sp_op[:1000], mpjpe[:1000], deg=1)
-
-    # Create sequence of 100 numbers from 0 to 100 
+    # Create sequence of 4 numbers from 0 to 1 
     xseq = np.linspace(0, 1, num=4)
 
     # Plot regression line
@@ -294,7 +350,8 @@ def run_evaluation(model, dataset_name, dataset, result_file,
     ax.plot(xseq, a + b * xseq, color="k", lw=2.5)
     #add fitted regression equation to plot
     ax.text(0.25, 0.25, 'y = ' + '{:.2f}'.format(a) + ' + {:.2f}'.format(b) + 'x', size=14)
-    plt.savefig('RightWrist.jpg')
+    plt.savefig(f'ED_SE_occ_{occ_joint}_error_{error_joint}.jpg')
+
 if __name__ == '__main__':
     args = parser.parse_args()
     model = hmr(config.SMPL_MEAN_PARAMS)
