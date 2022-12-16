@@ -193,8 +193,7 @@ if __name__ == '__main__':
     parser.add_argument('--occ_size', type=int, default='40')  # Size of occluding window
     parser.add_argument('--pixel', type=int, default='1')  # Occluding window - pixel values
     parser.add_argument('--joint', type=int, default='13')  
-    """ Joint index    joint_names = ['Right Ankle','Right Knee', 'Right Hip','Left Hip','Left Knee','Left Ankle','Right Wrist','Right Elbow',
-                                                    'Right Shoulder', 'Left Shoulder', 'Left Elbow', 'Left Wrist', 'Neck', 'Top of Head']"""
+    """ Joint index    joint_names = ['Right Ankle','Right Knee', 'Right Hip','Left Hip','Left Knee','Left Ankle','Right Wrist','Right Elbow', 'Right Shoulder', 'Left Shoulder', 'Left Elbow', 'Left Wrist', 'Neck', 'Top of Head']"""
     parser.add_argument('--batch_size', default=16) # Batch size for testing
     parser.add_argument('--log_freq', default=50, type=int) # Frequency of printing intermediate results
     args = parser.parse_args()

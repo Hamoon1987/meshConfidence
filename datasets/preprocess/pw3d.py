@@ -89,18 +89,18 @@ def pw3d_extract(dataset_path, out_path):
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
     out_file = os.path.join(out_path,
-        '3dpw_test_m.npz')
-    np.savez(out_file, imgname=imgnames_,
-                       center=centers_,
-                       scale=scales_,
-                       pose=poses_,
-                       shape=shapes_,
-                       gender=genders_,
-                       camera_extrinsics= camera_extrinsics_,
-                       camera_intrinsics = cam_intrinsics_,
-                       joint_position = joint_position_,
-                       bbox = bbox_,
-                       trans = trans_,
+        '3dpw_test_m_5.npz')
+    np.savez(out_file, imgname=imgnames_[::5],
+                       center=centers_[::5],
+                       scale=scales_[::5],
+                       pose=poses_[::5],
+                       shape=shapes_[::5],
+                       gender=genders_[::5],
+                       camera_extrinsics= camera_extrinsics_[::5],
+                       camera_intrinsics = cam_intrinsics_[::5],
+                       joint_position = joint_position_[::5],
+                       bbox = bbox_[::5],
+                    #    trans = trans_[::50],
                     #    global_pose = global_pose_,
                     #    translation=translation_,
                        )

@@ -34,7 +34,7 @@ class BaseDataset(Dataset):
         self.camera_extrinsics = self.data['camera_extrinsics']
         self.joint_position = self.data['joint_position']
         self.bbox = self.data['bbox']
-        self.trans = self.data['trans']
+        # self.trans = self.data['trans']
 
         
         # Get paths to gt masks, if available
@@ -239,7 +239,7 @@ class BaseDataset(Dataset):
         item['camera_intrinsics'] = self.camera_intrinsics[index]
         item['joint_position'] = self.joint_position[index]
         item['bbox'] = self.bbox[index]
-        item['trans'] = self.trans[index]
+        # item['trans'] = self.trans[index]
 
         try:
             item['maskname'] = self.maskname[index]

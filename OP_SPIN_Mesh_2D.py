@@ -14,6 +14,7 @@ from utils.geometry import perspective_projection
 import cv2
 from pytorchopenpose.src.body import Body
 from utils.renderer import Renderer
+from utils.imutils import transform
 
 def denormalize(images):
     # De-normalizing the image
@@ -30,7 +31,7 @@ print(device)
 dataset = BaseDataset(None, "3dpw", is_train=False)
 data_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
 """ Step """
-step = 279
+step = 1000
 # 5400
 # 279
 batch = next(itertools.islice(data_loader, step, None))
@@ -77,6 +78,38 @@ gt_keypoints_3d = torch.matmul(J_regressor_batch, gt_vertices)
 gt_pelvis = gt_keypoints_3d[:, [0],:].clone()
 gt_keypoints_3d_ = gt_keypoints_3d[:, joint_mapper_h36m, :]
 gt_keypoints_3d = gt_keypoints_3d_ - gt_pelvis
+
+# 2D keypoints based on labels
+# Prepare the required parameters
+camera_intrinsics = batch['camera_intrinsics'].to(device)
+camera_extrinsics = batch['camera_extrinsics'].to(device)
+joint_position = batch['joint_position'].to(device)
+joint_position = joint_position.reshape(-1, 24, 3)
+# batch_size = joint_position.shape[0]
+# Preparing the regressor to map 24 3DPW keypoints on to 14 joints
+joint_mapper = [8, 5, 2, 1, 4, 7, 21, 19, 17,16, 18, 20, 12, 15]
+# Get 14 ground truth joints
+joint_position = joint_position[:, joint_mapper, :]
+# Project 3D keypoints to 2D keypoints
+# Homogenious real world coordinates X, P is the projection matrix
+P = torch.matmul(camera_intrinsics, camera_extrinsics).to(device)
+temp = torch.ones((batch_size, 14, 1)).double().to(device)
+X = torch.cat((joint_position, temp), 2)
+X = X.permute(0, 2, 1)
+p = torch.matmul(P, X)
+p = torch.div(p[:,:,:], p[:,2:3,:])
+p = p[:, [0,1], :]
+# Projected 2d coordinates on image p with the shape of (batch_size, 14, 2)
+p = p.permute(0, 2, 1).cpu().numpy()
+# Process 2d keypoints to match the processed images in the dataset
+center = batch['center'].to(device)
+scale = batch['scale'].to(device)
+res = [constants.IMG_RES, constants.IMG_RES]
+new_p = np.ones((batch_size,14,2))
+for i in range(batch_size):
+    for j in range(p.shape[1]):
+        temp = transform(p[i,j:j+1,:][0], center[i], scale[i], res, invert=0, rot=0)
+        new_p[i,j,:] = temp
 
 # 2D projection of points
 focal_length = constants.FOCAL_LENGTH
@@ -142,14 +175,27 @@ pred_keypoints_2d = pred_keypoints_2d[0].cpu().numpy()
 gt_keypoints_2d = gt_keypoints_2d[0].cpu().numpy()
 camera_translation = camera_translation[0].cpu().numpy()
 op = candidate_sorted_t[0]
+new_p = new_p[0]
+
+# hip = gt_keypoints_2d[3].copy()
+# gt_keypoints_2d_ = gt_keypoints_2d - hip + [128, 110]
+# gt_keypoints_2d_ = gt_keypoints_2d - (constants.IMG_RES/2)
+# gt_keypoints_2d_ = gt_keypoints_2d_/(constants.IMG_RES/2)
+# gt_keypoints_2d_ = gt_keypoints_2d_*50 + 120
+# gt_keypoints_2d = gt_keypoints_2d - [4, 0]
 
 original_img = denormalize(images)[0]
 original_img = images_[0]
-cv2.imwrite(f'sp_op/original_img.png', original_img)
-img_mesh1 = renderer(gt_vertices, camera_translation, back, (255, 255, 255, 1))
-img_mesh2 = renderer(pred_vertices, camera_translation, img_mesh1, (0.8, 0.3, 0.8, 1))
-cv2.circle(img_mesh2, (int(op[6][0]), int(op[6][1])), 3, color = (0, 255, 0), thickness=-1) #OpenPose
-cv2.imwrite("examples/testmesh.jpg", 255 * img_mesh2[:, : ,::-1])
+
+
+# cv2.imwrite(f'sp_op/original_img.png', original_img)
+# img_mesh1 = renderer(gt_vertices, camera_translation, back, (255, 255, 255, 1))
+# img_mesh2 = renderer(pred_vertices, camera_translation, img_mesh1, (0.8, 0.3, 0.8, 1))
+for i in range(8,10):
+    cv2.circle(original_img, (int(pred_keypoints_2d[i][0]), int(pred_keypoints_2d[i][1])), 3, color = (0, 255, 0), thickness=-1) #gt_joint_position
+    cv2.circle(original_img, (int(op[i][0]), int(op[i][1])), 3, color = (255, 0, 0), thickness=-1) #OpenPose
+cv2.imwrite(f'examples/test.png', original_img)
+# cv2.imwrite("examples/testmesh.jpg", 255 * img_mesh2[:, : ,::-1])
 
 
 
