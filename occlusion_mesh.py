@@ -50,7 +50,8 @@ def project_mesh(args):
     cv2.imwrite('examples/mpjpe_on_mesh.png', 255 * img_mesh[:,:,::-1])
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--error_list', default=[100.95, 106.4, 108.1, 107.25, 107.29, 101.32, 110.39, 112.64, 110.39, 111.9, 113, 111, 129.8, 125.18]) # List of MPJPE (1x14)
+    parser.add_argument('--error_list', default= [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.1])
+    # [100.95, 106.4, 108.1, 107.25, 107.29, 101.32, 110.39, 112.64, 110.39, 111.9, 113, 111, 129.8, 125.18]) # List of MPJPE (1x14)
     """ Joint index    joint_names = ['Right Ankle','Right Knee', 'Right Hip','Left Hip','Left Knee','Left Ankle','Right Wrist','Right Elbow', 'Right Shoulder', 'Left Shoulder', 'Left Elbow', 'Left Wrist', 'Neck', 'Top of Head']"""
     args = parser.parse_args()
     project_mesh(args)

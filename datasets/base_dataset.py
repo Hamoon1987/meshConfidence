@@ -28,13 +28,11 @@ class BaseDataset(Dataset):
         self.normalize_img = Normalize(mean=constants.IMG_NORM_MEAN, std=constants.IMG_NORM_STD)
         self.data = np.load(config.DATASET_FILES[is_train][dataset], allow_pickle=True)
         self.imgname = self.data['imgname']
-        # self.translation = self.data['translation']
-        # self.translation = np.array(self.translation, dtype=np.float32)
         self.camera_intrinsics = self.data['camera_intrinsics']
         self.camera_extrinsics = self.data['camera_extrinsics']
         self.joint_position = self.data['joint_position']
-        self.bbox = self.data['bbox']
-        # self.trans = self.data['trans']
+        # self.bbox = self.data['bbox']
+
 
         
         # Get paths to gt masks, if available
@@ -238,8 +236,7 @@ class BaseDataset(Dataset):
         item['camera_extrinsics'] = self.camera_extrinsics[index]
         item['camera_intrinsics'] = self.camera_intrinsics[index]
         item['joint_position'] = self.joint_position[index]
-        item['bbox'] = self.bbox[index]
-        # item['trans'] = self.trans[index]
+        # item['bbox'] = self.bbox[index]
 
         try:
             item['maskname'] = self.maskname[index]

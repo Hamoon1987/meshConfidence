@@ -1,11 +1,8 @@
 import numpy as np
 
-a = np.array([[1, 0], [2, 1], [3, 2]])
-b = np.array([-1, 1, -1, -1]).astype(int)
-print(b)
-c = a[b]
-print(c)
 
+a = np.load("data/J_regressor_h36m.npy")
+print(a[10])
 # import numpy as np
 # import matplotlib.pyplot as plt
 # sp_op = np.load('sp_op.npy') 
