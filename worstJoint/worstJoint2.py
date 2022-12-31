@@ -1,53 +1,32 @@
-"""
-Predict the 2d location of an specific joint with SPIN and OpenPose. Compare the difference and SPIN Error
-Example usage:
-```
-python3 sp_op/sp_op3.py --checkpoint=/SPINH/data/model_checkpoint.pt --dataset=3dpw --log_freq=20
-```
-Running the above command will compute the MPJPE and Reconstruction Error on the Human3.6M dataset (Protocol I). The ```--dataset``` option can take different values based on the type of evaluation you want to perform:
-1. Human3.6M Protocol 1 ```--dataset=h36m-p1```
-2. Human3.6M Protocol 2 ```--dataset=h36m-p2```
-3. 3DPW ```--dataset=3dpw```
-4. LSP ```--dataset=lsp```
-5. MPI-INF-3DHP ```--dataset=mpi-inf-3dhp```
-"""
+# python3 worstJoint/worstJoint2.py --checkpoint=/SPINH/data/model_checkpoint.pt --dataset=3dpw --log_freq=20
+
+
+import argparse
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
 import cv2
 import os
-import argparse
-import json
-from collections import namedtuple
 from tqdm import tqdm
-import torchgeometry as tgm
 import sys
 sys.path.insert(0, '/SPINH')
 import config
 import constants
 from models import hmr, SMPL
 from datasets import BaseDataset
-from utils.imutils import uncrop
-from utils.pose_utils import reconstruction_error
 import itertools
 from utils.geometry import perspective_projection
 from pytorchopenpose.src.body import Body
 from utils.imutils import transform
-from utils.geometry import estimate_translation_np
-import matplotlib.pyplot as plt
+import random
 
 # Define command-line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', default=None, help='Path to network checkpoint')
-parser.add_argument('--dataset', default='h36m-p1', choices=['h36m-p1', 'h36m-p2', 'lsp', '3dpw', 'mpi-inf-3dhp'], help='Choose evaluation dataset')
+parser.add_argument('--dataset', default='3dpw', choices=['h36m-p1', 'h36m-p2', 'lsp', '3dpw', 'mpi-inf-3dhp'], help='Choose evaluation dataset')
 parser.add_argument('--log_freq', default=20 , type=int, help='Frequency of printing intermediate results')
 parser.add_argument('--batch_size', default=32, help='Batch size for testing')
-parser.add_argument('--shuffle', default=False, action='store_true', help='Shuffle data')
 parser.add_argument('--num_workers', default=0, type=int, help='Number of processes for data loading')
-parser.add_argument('--result_file', default=None, help='If set, save detections to a .npz file')
-parser.add_argument('--occ_size', type=int, default='40')  # Size of occluding window
-parser.add_argument('--pixel', type=int, default='0')  # Occluding window - pixel values
-# parser.add_argument('--occ_joint', type=int, default='6')  # The joint you want to occlude
 
 def denormalize(images):
     # De-normalizing the image
@@ -83,13 +62,9 @@ def get_2d_projection(batch, joint_position):
             temp = transform(p[i,j:j+1,:][0], center[i], scale[i], res, invert=0, rot=0)
             new_p[i,j,:] = temp
     return new_p
-
-def get_occluded_imgs(batch, args, new_p, joint_index):
+def get_occluded_imgs(batch, new_p, joint_idx, occ_size, occ_pixel):
     # Get the image batch find the ground truth joint location and occlude it. This file uses the ground truth 3d joint
     # positions and projects them.
-    occ_size = args.occ_size
-    occ_pixel = args.pixel
-    joint_idx = joint_index
     # Prepare the required parameters
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     # Occlude the Images at the joint position
@@ -107,11 +82,9 @@ def get_occluded_imgs(batch, args, new_p, joint_index):
         occ_images[i,2,h_start:h_end, w_start:w_end] = occ_pixel
     return occ_images
 
-def run_evaluation(model, joint_index, dataset_name, dataset, result_file,
-                   batch_size=32, img_res=224, 
-                   num_workers=1, shuffle=False, log_freq=20):
-    """Run evaluation on the datasets and metrics we report in the paper. """
-
+def run_evaluation(model, dataset_name, dataset,
+                   batch_size=2, log_freq=20):
+    
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     # Transfer model to the GPU
     model.to(device)
@@ -127,16 +100,22 @@ def run_evaluation(model, joint_index, dataset_name, dataset, result_file,
     # Regressor for H36m joints
     J_regressor = torch.from_numpy(np.load(config.JOINT_REGRESSOR_H36M)).float()
     # Create dataloader for the dataset
-    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-    # Pose metrics
-    # MPJPE and Reconstruction error for the non-parametric and parametric shapes
-    mpjpe = np.zeros(len(dataset))
-    sp_op = np.zeros(len(dataset))
-    op_conf = np.zeros(len(dataset))
-    # Choose if you want to occlude a joint before pose estimation
+    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     joint_mapper_h36m = constants.H36M_TO_J17 if dataset_name == 'mpi-inf-3dhp' else constants.H36M_TO_J14
+
+    eval_list = np.zeros(len(dataset))
+    spin_pred_smpl = np.zeros((len(dataset), 14, 2))
+    spin_pred_reg = np.zeros((len(dataset), 14, 2))
+    gt_label = np.zeros((len(dataset), 14, 2))
+    gt_mesh_smpl = np.zeros((len(dataset), 14, 2))
+    op = np.zeros((len(dataset), 14, 2))
+    op_conf = np.zeros((len(dataset), 14, 1))
     # Iterate over the entire dataset
     for step, batch in enumerate(tqdm(data_loader, desc='Eval', total=len(data_loader))):
+        # step = 0
+        # batch = next(itertools.islice(data_loader, step, None))
+        # if step == 10:
+        #     break
         # Get 3D GT from labels (accurate)
         gt_label_3d = batch['joint_position'].to(device)
         gt_label_3d = gt_label_3d.reshape(-1, 24, 3)
@@ -152,11 +131,14 @@ def run_evaluation(model, joint_index, dataset_name, dataset, result_file,
         gt_joints_smpl_female = smpl_female(global_orient=gt_pose[:,:3], body_pose=gt_pose[:,3:], betas=gt_betas).joints 
         gt_joints_smpl[gender==1, :, :] = gt_joints_smpl_female[gender==1, :, :].to(device).float()
         
-        occ_joint = False
-        occ_joint_index = joint_index
+        occ_joint = True
+        occ_joint_index = random.randint(0,13)
+        occ_size = 40
+        occ_pixel = 0
         # Get the prediction
         if occ_joint:
-            batch['img'] = get_occluded_imgs(batch, args, gt_label_2d, occ_joint_index)
+            batch['img'] = get_occluded_imgs(batch, gt_label_2d, occ_joint_index, occ_size, occ_pixel)
+        
         images = batch['img'].to(device)
         curr_batch_size = images.shape[0]
         with torch.no_grad():
@@ -189,24 +171,25 @@ def run_evaluation(model, joint_index, dataset_name, dataset, result_file,
                                     translation=camera_translation,
                                     focal_length=focal_length,
                                     camera_center=camera_center)
-        
-        # Normalize between -1 and 1
-        pred_keypoints_2d_n = torch.sub(pred_keypoints_2d, (constants.IMG_RES/2))
-        pred_keypoints_2d_n = torch.div(pred_keypoints_2d_n, (constants.IMG_RES/2))
-        gt_keypoints_2d_n = torch.sub(gt_keypoints_2d, (constants.IMG_RES/2))
-        gt_keypoints_2d_n = torch.div(gt_keypoints_2d_n, (constants.IMG_RES/2))
-        gt_label_2d_n = torch.sub(gt_label_2d, (constants.IMG_RES/2))
-        gt_label_2d_n = torch.div(gt_label_2d_n, (constants.IMG_RES/2))
-        
+
+        smpl_pred_keypoints_2d = perspective_projection(pred_joints,
+                                        rotation=torch.eye(3, device=device).unsqueeze(0).expand(curr_batch_size, -1, -1),
+                                        translation=camera_translation,
+                                        focal_length=focal_length,
+                                        camera_center=camera_center)
+        smpl_joint_map = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0]
+        smpl_pred_keypoints_2d = smpl_pred_keypoints_2d[: ,smpl_joint_map, :]
+
         # gt_keypoints_2d_n is the GT regressed from the mesh. Not accurate but has all the joints
         # gt_label_2d_n is the GT from the labels. Accurate but does not have all the joints
         # Use gt_label_2d_n to put the gt_keypoints_2d_n in the correct place. Based on the neck joint which is common in both.
-        gt_keypoints_2d_n = gt_keypoints_2d_n - gt_keypoints_2d_n[:, 1:2, :] + gt_label_2d_n[:,12:13,:]
+        gt_keypoints_2d = gt_keypoints_2d - gt_keypoints_2d[:, 1:2, :] + gt_label_2d[:,12:13,:]
         
         # Replacing GT labels for head and neck with the SMPL-regressed GT from the mesh
-        gt_label_2d_n[:, 12, :] = gt_keypoints_2d_n[:, 40, :]
-        gt_label_2d_n[:, 13, :] = gt_keypoints_2d_n[:, 0, :]
+        gt_label_2d[:, 12, :] = gt_keypoints_2d[:, 40, :]
+        gt_label_2d[:, 13, :] = gt_keypoints_2d[:, 0, :]
         
+        gt_keypoints_2d = gt_keypoints_2d[:, smpl_joint_map,:]
         # OpenPose 2d joint prediction
         body_estimation = Body('pytorchopenpose/model/body_pose_model.pth')
         # De-normalizing the image
@@ -229,7 +212,7 @@ def run_evaluation(model, joint_index, dataset_name, dataset, result_file,
             subset_error = []
             for j in range(subset.shape[0]):
                 subset_sorted = subset[j][map_op_smpl].astype(int)
-                candidate = np.vstack([candidate, [constants.IMG_RES/2, constants.IMG_RES/2, 0, -1]])
+                candidate = np.vstack([candidate, [constants.IMG_RES, constants.IMG_RES, 0, -1]])
                 candidate_sorted = candidate[subset_sorted]
                 candidate_sorted_t = torch.tensor(candidate_sorted[:,:2], dtype=torch.float).to(device)
                 error_s = torch.sqrt(((pred_keypoints_2d[i] - candidate_sorted_t) ** 2).sum(dim=-1)).mean(dim=-1).cpu().numpy()
@@ -237,7 +220,7 @@ def run_evaluation(model, joint_index, dataset_name, dataset, result_file,
             subset_index = subset_error.index(min(subset_error))        
             
             subset_sorted = subset[subset_index][map_op_smpl].astype(int)
-            candidate = np.vstack([candidate, [constants.IMG_RES/2, constants.IMG_RES/2, 0, -1]])
+            candidate = np.vstack([candidate, [constants.IMG_RES, constants.IMG_RES, 0, -1]])
             candidate_sorted = candidate[subset_sorted]
             op_confidence = torch.tensor(candidate_sorted[:,2:3], dtype=torch.float)
             candidate_sorted_t = torch.tensor(candidate_sorted[:,:2], dtype=torch.float)
@@ -246,47 +229,78 @@ def run_evaluation(model, joint_index, dataset_name, dataset, result_file,
         candidate_sorted_t = torch.stack(candidate_sorted_list, dim=0).to(device)
         op_confidence_t = torch.stack(op_confidence_list, dim=0).to(device)
 
-        # Normalize between -1 and 1
-        candidate_sorted_t_n = torch.sub(candidate_sorted_t, (constants.IMG_RES/2))
-        candidate_sorted_t_n = torch.div(candidate_sorted_t_n, (constants.IMG_RES/2))
+        spin_pred_smpl[step * batch_size:step * batch_size + curr_batch_size] = smpl_pred_keypoints_2d.cpu().numpy()
+        spin_pred_reg[step * batch_size:step * batch_size + curr_batch_size] = pred_keypoints_2d.cpu().numpy()
+        gt_label[step * batch_size:step * batch_size + curr_batch_size] = gt_label_2d.cpu().numpy()
+        gt_mesh_smpl[step * batch_size:step * batch_size + curr_batch_size] = gt_keypoints_2d.cpu().numpy()
+        op[step * batch_size:step * batch_size + curr_batch_size] = candidate_sorted_t.cpu().numpy()
+        op_conf[step * batch_size:step * batch_size + curr_batch_size] = op_confidence_t.cpu().numpy()
 
-        # Absolute error SPIN (MPJPE)
-        error = torch.sqrt(((pred_keypoints_2d_n[:, joint_index, :] - gt_label_2d_n[:, joint_index, :]) ** 2).sum(dim=-1)).cpu().numpy()
-        mpjpe[step * batch_size:step * batch_size + curr_batch_size] = error
+        sp_op = torch.sqrt(((smpl_pred_keypoints_2d - candidate_sorted_t) ** 2).sum(dim=-1)).to(device)
+        sp_gt = torch.sqrt(((smpl_pred_keypoints_2d - gt_label_2d) ** 2).sum(dim=-1)).to(device)
+        sp_op_max_ind = torch.argmax(sp_op, dim=1)
+        sp_gt_max_ind = torch.argmax(sp_gt, dim=1)
 
-        # SPIN - OpenPose (sp_op)
-        error_ = torch.sqrt(((pred_keypoints_2d_n[:, joint_index, :] - candidate_sorted_t_n[:, joint_index, :]) ** 2).sum(dim=-1)).cpu().numpy()
-        sp_op[step * batch_size:step * batch_size + curr_batch_size] = error_
+        eval = torch.eq(sp_op_max_ind, sp_gt_max_ind)
+        eval = eval.cpu().numpy()
+        eval_list[step * batch_size:step * batch_size + curr_batch_size] = eval
 
-        # OpenPose Confidence
-        op_confidence_joint = op_confidence_t[:, joint_index, 0].cpu().numpy()
-        op_conf[step * batch_size:step * batch_size + curr_batch_size] = op_confidence_joint
+        # original_img = images_[0]
+        # gt_label_2d = gt_label_2d[0]
+        # pred_keypoints_2d = pred_keypoints_2d[0]
+        # candidate_sorted_t = candidate_sorted_t[0]
+        # sp_op_max_ind = sp_op_max_ind[0]
+        # sp_gt_max_ind = sp_gt_max_ind[0]
+        # smpl_pred_keypoints_2d = smpl_pred_keypoints_2d[0]
+        # gt_keypoints_2d = gt_keypoints_2d[0]
+        # for i in [sp_op_max_ind, sp_gt_max_ind]:
+        # # for i in range(40,41):
+        #     # cv2.circle(original_img, (int(smpl_pred_keypoints_2d[i][0]), int(smpl_pred_keypoints_2d[i][1])), 3, color = (255, 0, 0), thickness=-1)
+        # # for i in range(14):
+        #     cv2.circle(original_img, (int(gt_label_2d[i][0]), int(gt_label_2d[i][1])), 3, color = (0, 255, 0), thickness=-1)
+        #     # cv2.circle(original_img, (int(smpl_pred_keypoints_2d[i][0]), int(smpl_pred_keypoints_2d[i][1])), 3, color = (255, 0, 0), thickness=-1)
+        #     # cv2.circle(original_img, (int(gt_keypoints_2d[i][0]), int(gt_keypoints_2d[i][1])), 1, color = (0, 255, 0), thickness=-1) 
+        #     cv2.circle(original_img, (int(pred_keypoints_2d[i][0]), int(pred_keypoints_2d[i][1])), 3, color = (255, 0, 0), thickness=-1) 
+        #     cv2.circle(original_img, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 3, color = (0, 0, 255), thickness=-1)
+        # if occ_joint:
+        #     cv2.imwrite(f"worstJoint/occ_test_{step}.jpg", original_img)
+        # else:
+        #     cv2.imwrite(f"worstJoint/test_{step}.jpg", original_img)
 
         # Print intermediate results during evaluation
         if step % log_freq == log_freq - 1:
-            print('MPJPE: ' + str(1000 * mpjpe[:step * batch_size].mean()))
-            print('sp_op: ' + str(1000 * sp_op[:step * batch_size].mean()))
+            print('Eval: ' + str(100 * eval_list[:step * batch_size].mean()))
             print()
-
-
+            original_img = images_[0]
+            gt_label_2d = gt_label_2d[0]
+            pred_keypoints_2d = pred_keypoints_2d[0]
+            candidate_sorted_t = candidate_sorted_t[0]
+            sp_op_max_ind = sp_op_max_ind[0]
+            sp_gt_max_ind = sp_gt_max_ind[0]
+            for i in [sp_op_max_ind, sp_gt_max_ind]:
+                cv2.circle(original_img, (int(gt_label_2d[i][0]), int(gt_label_2d[i][1])), 3, color = (0, 255, 0), thickness=-1) 
+                cv2.circle(original_img, (int(pred_keypoints_2d[i][0]), int(pred_keypoints_2d[i][1])), 3, color = (255, 0, 0), thickness=-1) 
+                cv2.circle(original_img, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 3, color = (0, 0, 255), thickness=-1) 
+            cv2.imwrite(f"worstJoint/test_{step}.jpg", original_img)
+    
     # Print final results during evaluation
     print('*** Final Results ***')
     print()
-    print('MPJPE: ' + str(1000 * mpjpe.mean()))
-    print()
-    print('sp_op: ' + str(1000 * sp_op.mean()))
-    print()
-    print('op_confidence: ' + str(op_conf.mean()))
-    print()
-
+    print('Eval: ' + str(100 * eval_list.mean()))
     if occ_joint:
-        np.save(f'sp_op/occ_sp_op_{joint_index}.npy', sp_op) # save
-        np.save(f'sp_op/occ_mpjpe_2d_{joint_index}.npy', mpjpe) # save
-        np.save(f'sp_op/occ_conf_{joint_index}.npy', op_conf) # save
+        np.save(f'worstJoint/occ_spin_pred_smpl.npy', spin_pred_smpl) # save
+        np.save(f'worstJoint/occ_spin_pred_reg.npy', spin_pred_reg) # save
+        np.save(f'worstJoint/occ_gt_label.npy', gt_label) # save
+        np.save(f'worstJoint/occ_gt_mesh_smpl.npy', gt_mesh_smpl) # save
+        np.save(f'worstJoint/occ_op.npy', op) # save
+        np.save(f'worstJoint/occ_op_conf.npy', op_conf) # save
     else:
-        np.save(f'sp_op/sp_op_{joint_index}.npy', sp_op) # save
-        np.save(f'sp_op/mpjpe_2d_{joint_index}.npy', mpjpe) # save
-        np.save(f'sp_op/conf_{joint_index}.npy', op_conf) # save
+        np.save(f'worstJoint/spin_pred_smpl.npy', spin_pred_smpl) # save
+        np.save(f'worstJoint/spin_pred_reg.npy', spin_pred_reg) # save
+        np.save(f'worstJoint/gt_label.npy', gt_label) # save
+        np.save(f'worstJoint/gt_mesh_smpl.npy', gt_mesh_smpl) # save
+        np.save(f'worstJoint/op.npy', op) # save
+        np.save(f'worstJoint/op_conf.npy', op_conf) # save
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -299,12 +313,6 @@ if __name__ == '__main__':
 
     # Setup evaluation dataset
     dataset = BaseDataset(None, args.dataset, is_train=False)
-    print(len(dataset))
-    # Run evaluation
-    for i in range(13,14):
-        print("joint_index = ", i)
-        joint_index = i    
-        run_evaluation(model, joint_index, args.dataset, dataset, args.result_file,
+    run_evaluation(model, args.dataset, dataset,
                     batch_size=args.batch_size,
-                    shuffle=args.shuffle,
                     log_freq=args.log_freq)
