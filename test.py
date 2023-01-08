@@ -1,8 +1,13 @@
 import numpy as np
+# import mat73
+# mat = mat73.loadmat('/SPINH/data/MPI_INF_3DHP/mpi_inf_3dhp_test_set/TS1/annot_data.mat')
+# print(mat["annot3"])
 
 
-a = np.load("data/J_regressor_h36m.npy")
-print(a[10])
+
+a = np.load("/SPINH/data/dataset_extras/mpi_inf_3dhp_valid.npz")
+print(a['S'][0].shape)
+# print(a[10])
 # import numpy as np
 # import matplotlib.pyplot as plt
 # sp_op = np.load('sp_op.npy') 

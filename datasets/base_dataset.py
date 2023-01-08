@@ -28,12 +28,20 @@ class BaseDataset(Dataset):
         self.normalize_img = Normalize(mean=constants.IMG_NORM_MEAN, std=constants.IMG_NORM_STD)
         self.data = np.load(config.DATASET_FILES[is_train][dataset], allow_pickle=True)
         self.imgname = self.data['imgname']
-        self.camera_intrinsics = self.data['camera_intrinsics']
-        self.camera_extrinsics = self.data['camera_extrinsics']
-        self.joint_position = self.data['joint_position']
-        # self.bbox = self.data['bbox']
 
+        # Get more data for 3dpw
+        try:
+            self.camera_intrinsics = self.data['camera_intrinsics']
+            self.camera_extrinsics = self.data['camera_extrinsics']
+            self.joint_position = self.data['joint_position']
+        except KeyError:
+            pass
 
+        # Get 2D labels for h36m-p1 and h36m-p1
+        try:
+            self.S_2D = self.data['S_2D']
+        except KeyError:
+            pass
         
         # Get paths to gt masks, if available
         try:
@@ -233,10 +241,6 @@ class BaseDataset(Dataset):
         item['gender'] = self.gender[index]
         item['sample_index'] = index
         item['dataset_name'] = self.dataset
-        item['camera_extrinsics'] = self.camera_extrinsics[index]
-        item['camera_intrinsics'] = self.camera_intrinsics[index]
-        item['joint_position'] = self.joint_position[index]
-        # item['bbox'] = self.bbox[index]
 
         try:
             item['maskname'] = self.maskname[index]
@@ -246,7 +250,18 @@ class BaseDataset(Dataset):
             item['partname'] = self.partname[index]
         except AttributeError:
             item['partname'] = ''
-
+        try:
+            item['S_2D'] = self.S_2D[index]
+        except AttributeError:
+            item['S_2D'] = 0
+        try:
+            item['camera_extrinsics'] = self.camera_extrinsics[index]
+            item['camera_intrinsics'] = self.camera_intrinsics[index]
+            item['joint_position'] = self.joint_position[index]
+        except AttributeError:
+            item['camera_extrinsics'] = 0
+            item['camera_intrinsics'] = 0
+            item['joint_position'] = 0
         return item
 
     def __len__(self):

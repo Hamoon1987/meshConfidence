@@ -2,7 +2,7 @@
 Predict the 2d location of an specific joint with SPIN and OpenPose. Compare the difference and SPIN Error
 Example usage:
 ```
-python3 sp_op/sp_op3.py --checkpoint=/SPINH/data/model_checkpoint.pt --dataset=3dpw --log_freq=20
+python3 sp_op/sp_op.py --checkpoint=/SPINH/data/model_checkpoint.pt --dataset=3dpw --log_freq=20
 ```
 Running the above command will compute the MPJPE and Reconstruction Error on the Human3.6M dataset (Protocol I). The ```--dataset``` option can take different values based on the type of evaluation you want to perform:
 1. Human3.6M Protocol 1 ```--dataset=h36m-p1```

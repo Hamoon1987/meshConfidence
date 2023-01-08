@@ -5,6 +5,7 @@ import glob
 import h5py
 import numpy as np
 import argparse
+os.environ["CDF_LIB"] = "/usr/local/cdf/lib"
 from spacepy import pycdf
 
 def h36m_extract(dataset_path, out_path, protocol=1, extract_img=False):
@@ -14,7 +15,7 @@ def h36m_extract(dataset_path, out_path, protocol=1, extract_img=False):
     global_idx = [14, 3, 4, 5, 2, 1, 0, 16, 12, 17, 18, 9, 10, 11, 8, 7, 6]
 
     # structs we use
-    imgnames_, scales_, centers_, parts_, Ss_  = [], [], [], [], []
+    imgnames_, scales_, centers_, parts_, Ss_, Ss_2d_  = [], [], [], [], []
 
     # users in validation set
     user_list = [9, 11]
@@ -26,6 +27,8 @@ def h36m_extract(dataset_path, out_path, protocol=1, extract_img=False):
         bbox_path = os.path.join(dataset_path, user_name, 'MySegmentsMat', 'ground_truth_bb')
         # path with GT 3D pose
         pose_path = os.path.join(dataset_path, user_name, 'MyPoseFeatures', 'D3_Positions_mono')
+        # path with GT 2D pose
+        pose_2d_path = os.path.join(dataset_path, user_name, 'MyPoseFeatures', 'D2_Positions')
         # path with videos
         vid_path = os.path.join(dataset_path, user_name, 'Videos')
 
@@ -44,6 +47,7 @@ def h36m_extract(dataset_path, out_path, protocol=1, extract_img=False):
 
             # 3D pose file
             poses_3d = pycdf.CDF(seq_i)['Pose'][0]
+
 
             # bbox file
             bbox_file = os.path.join(bbox_path, seq_name.replace('cdf', 'mat'))
@@ -94,7 +98,32 @@ def h36m_extract(dataset_path, out_path, protocol=1, extract_img=False):
                     centers_.append(center)
                     scales_.append(scale)
                     Ss_.append(S24)
-
+        
+        # go over all the sequences of each user
+        seq_list = glob.glob(os.path.join(pose_2d_path, '*.cdf'))
+        seq_list.sort()
+        for seq_i in seq_list:
+            # sequence info
+            seq_name = seq_i.split('/')[-1]
+            action, camera, _ = seq_name.split('.')
+            action = action.replace(' ', '_')
+            # irrelevant sequences
+            if action == '_ALL':
+                continue
+            # 2D pose file
+            poses_2d = pycdf.CDF(seq_i)['Pose'][0]
+            # go over each frame of the sequence
+            for frame_i in range(poses_2d.shape[0]):
+                # check if you can keep this frame
+                if frame_i % 5 == 0 and (protocol == 1 or camera == '60457274'):
+                    # read GT 2D pose
+                    Sall = np.reshape(poses_2d[frame_i,:], [-1,2])/1000.
+                    S17 = Sall[h36m_idx]
+                    # S17 -= S17[0] # root-centered
+                    S24 = np.zeros([24,3])
+                    S24[global_idx, :2] = S17
+                    S24[global_idx, 2] = 1
+                    Ss_2d_.append(S24)
     # store the data struct
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
@@ -103,4 +132,5 @@ def h36m_extract(dataset_path, out_path, protocol=1, extract_img=False):
     np.savez(out_file, imgname=imgnames_,
                        center=centers_,
                        scale=scales_,
-                       S=Ss_)
+                       S=Ss_,
+                       S_2D = Ss_2d_)
