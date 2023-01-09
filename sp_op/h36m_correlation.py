@@ -59,7 +59,6 @@ def run_evaluation(model, joint_index, dataset_name, dataset,
     for step, batch in enumerate(tqdm(data_loader, desc='Eval', total=len(data_loader))):
     # step = 0
     # batch = next(itertools.islice(data_loader, step, None))
-        
         images = batch['img'].to(device)
         curr_batch_size = images.shape[0]
 
@@ -98,7 +97,7 @@ def run_evaluation(model, joint_index, dataset_name, dataset,
 
         pred_spine_2d = smpl_pred_keypoints_2d[:, [41],:].clone()
         smpl_pred_keypoints_2d = smpl_pred_keypoints_2d - pred_spine_2d + gt_spine_2d
-        smpl_joint_map_op = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0, 8] # 41 is spine
+        smpl_joint_map_op = [11, 10, 27, 28, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0] # 41 is spine
         smpl_joint_map_gt = [11, 10, 27, 28, 13, 14, 4, 3, 2, 5, 6, 7, 37, 42] # 39 is pelvis
         smpl_pred_keypoints_2d_op = smpl_pred_keypoints_2d[:, smpl_joint_map_op, :]
         smpl_pred_keypoints_2d_gt = smpl_pred_keypoints_2d[:, smpl_joint_map_gt, :]
@@ -147,12 +146,6 @@ def run_evaluation(model, joint_index, dataset_name, dataset,
         op_confidence_joint = op_confidence_t[:, joint_index, 0].cpu().numpy()
         op_conf[step * batch_size:step * batch_size + curr_batch_size] = op_confidence_joint
 
-        # Print intermediate results during evaluation
-        if step % log_freq == log_freq - 1:
-            print('sp_gt: ' + str(1000 * sp_gt[:step * batch_size].mean()))
-            print('sp_op: ' + str(1000 * sp_op[:step * batch_size].mean()))
-            print()
-
 
         # # Visualize
         # candidate_sorted_t = candidate_sorted_t[0]
@@ -180,9 +173,9 @@ def run_evaluation(model, joint_index, dataset_name, dataset,
     print('op_confidence: ' + str(op_conf.mean()))
     print()
 
-    np.save(f'sp_op/h36m2_sp_op_{joint_index}.npy', sp_op) # save
-    np.save(f'sp_op/h36m2_sp_gt_{joint_index}.npy', sp_gt) # save
-    np.save(f'sp_op/h36m2_conf_{joint_index}.npy', op_conf) # save
+    np.save(f'sp_op/h36m-p2/h36m-p2_sp_op_{joint_index}.npy', sp_op) # save
+    np.save(f'sp_op/h36m-p2/h36m-p2_sp_gt_{joint_index}.npy', sp_gt) # save
+    np.save(f'sp_op/h36m-p2/h36m-p2_conf_{joint_index}.npy', op_conf) # save
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -197,9 +190,9 @@ if __name__ == '__main__':
     dataset = BaseDataset(None, args.dataset, is_train=False)
     print(len(dataset))
     # Run evaluation
-    for i in range(0,14):
+    for i in range(2, 4):
         print("joint_index = ", i)
-        joint_index = i    
+        joint_index = i
         run_evaluation(model, joint_index, args.dataset, dataset,
                     batch_size=args.batch_size,
                     shuffle=args.shuffle,

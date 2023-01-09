@@ -2,18 +2,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as img
 
+dataset_index = 1
+occluded = False
+dataset_name = ["3dpw", "h36m-p2"]
+dataset = dataset_name[dataset_index]
+if occluded:
+    path = "sp_op/" + dataset + "/" + dataset + "_occ_"
+else:
+    path = "sp_op/" + dataset + "/" + dataset + "_"
 rho_list = []
 rho_list_l = []
-occluded = False
+
 for joint_index in range (14):# choose the joint index
-    if occluded:
-        sp_op = np.load(f'sp_op/occ_sp_op_{joint_index}.npy') 
-        sp_gt = np.load(f'sp_op/occ_mpjpe_2d_{joint_index}.npy')
-        op_conf = np.load(f'sp_op/occ_conf_{joint_index}.npy')
-    else:
-        sp_op = np.load(f'sp_op/3dpw_sp_op_{joint_index}.npy')
-        sp_gt = np.load(f'sp_op/3dpw_gt_{joint_index}.npy')
-        op_conf = np.load(f'sp_op/3dpw_conf_{joint_index}.npy')
+    sp_op = np.load(path + f'sp_op_{joint_index}.npy')
+    sp_gt = np.load(path + f'sp_gt_{joint_index}.npy')
+    op_conf = np.load(path + f'conf_{joint_index}.npy')
     # limit results to high confidence OpenPose outputs
     op_conf_index = [i for i,v in enumerate(op_conf) if v > 0.1]
     
@@ -63,45 +66,40 @@ for joint_index in range (14):# choose the joint index
     
     ax.set_title(f'$r_{{{joint_index}}}$={my_rho_l}' , y=1.0, pad=-45, size=45)
     fig.set_tight_layout(tight=True)
-    if occluded:
-        plt.savefig(f'sp_op/Occ_ED_SE_{joint_index}.jpg')
-    else:
-        plt.savefig(f'sp_op/ED_SE_{joint_index}.jpg')
+    plt.savefig(path + f'ED_SE_{joint_index}.jpg')
+
     rho_list.append(my_rho)
     rho_list_l.append(my_rho_l)
 print()
 print("Average coefficient = ", (np.mean(rho_list)))
 print("Average coefficient l= ", (np.mean(rho_list_l)))
 
-# joint_names = ['Right Ankle',
-#                 'Right Knee',
-#                 'Right Hip',
-#                 'Left Hip',
-#                 'Left Knee',
-#                 'Left Ankle',
-#                 'Right Wrist',
-#                 'Right Elbow',
-#                 'Right Shoulder',
-#                 'Left Shoulder',
-#                 'Left Elbow',
-#                 'Left Wrist',
-#                 'Neck',
-#                 'Top of Head'
-#                 ]
-# w, h = 7, 2
-# f, axarr = plt.subplots(h, w)
-# f.set_size_inches((w*3, h*3))
+joint_names = ['Right Ankle',
+                'Right Knee',
+                'Right Hip',
+                'Left Hip',
+                'Left Knee',
+                'Left Ankle',
+                'Right Wrist',
+                'Right Elbow',
+                'Right Shoulder',
+                'Left Shoulder',
+                'Left Elbow',
+                'Left Wrist',
+                'Neck',
+                'Top of Head'
+                ]
+w, h = 7, 2
+f, axarr = plt.subplots(h, w)
+f.set_size_inches((w*3, h*3))
 
-# for jid in range(14):
-#     image = img.imread(f'sp_op/ED_SE_{jid}.jpg')
-#     axarr[jid // w, jid % w].axis('off')
-#     axarr[jid // w, jid % w].set_title(
-#     f'{joint_names[jid]}'
-#     )
-#     axarr[jid // w, jid % w].imshow(image)
+for jid in range(14):
+    image = img.imread(path + f'ED_SE_{jid}.jpg')
+    axarr[jid // w, jid % w].axis('off')
+    axarr[jid // w, jid % w].set_title(
+    f'{joint_names[jid]}'
+    )
+    axarr[jid // w, jid % w].imshow(image)
 
-# f.set_tight_layout(tight=True)
-# if occluded:
-#     plt.savefig("sp_op/ED_SE_all.jpg")
-# else:
-#     plt.savefig("sp_op/Occ_ED_SE_all.jpg")
+f.set_tight_layout(tight=True)
+plt.savefig(path + f'ED_SE_All.jpg')

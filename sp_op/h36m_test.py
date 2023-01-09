@@ -57,7 +57,7 @@ def run_evaluation(model, joint_index, dataset_name, dataset,
     op_conf = np.zeros(len(dataset))
 
     # for step, batch in enumerate(tqdm(data_loader, desc='Eval', total=len(data_loader))):
-    step = 30
+    step = 0
     batch = next(itertools.islice(data_loader, step, None))
     
     images = batch['img'].to(device)
@@ -96,7 +96,7 @@ def run_evaluation(model, joint_index, dataset_name, dataset,
                                         camera_center=camera_center)
     pred_spine_2d = smpl_pred_keypoints_2d[:, [41],:].clone()
     smpl_pred_keypoints_2d = smpl_pred_keypoints_2d - pred_spine_2d + gt_spine_2d
-    smpl_joint_map_op = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0, 41] # 41 is spine
+    smpl_joint_map_op = [11, 10, 27, 28, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0, 41] # 41 is spine
     smpl_joint_map_gt = [11, 10, 27, 28, 13, 14, 4, 3, 2, 5, 6, 7, 37, 42] # 39 is pelvis
     smpl_pred_keypoints_2d_op = smpl_pred_keypoints_2d[:, smpl_joint_map_op, :]
     smpl_pred_keypoints_2d_gt = smpl_pred_keypoints_2d[:, smpl_joint_map_gt, :]
@@ -161,17 +161,17 @@ def run_evaluation(model, joint_index, dataset_name, dataset,
     smpl_pred_keypoints_2d_gt = smpl_pred_keypoints_2d_gt[0]
     smpl_pred_keypoints_2d_op = smpl_pred_keypoints_2d_op[0]
     image_test = image_[0]
-    for i in range(15):
+    for i in range(14):
         # i = joint_index
         cv2.circle(image_test, (int(gt_keypoints_2d[i][0]), int(gt_keypoints_2d[i][1])), 3, color = (0, 255, 0), thickness=-1)
-        # cv2.circle(image_test, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 2, color = (0, 0, 255), thickness=-1)
-        # cv2.circle(image_test, (int(smpl_pred_keypoints_2d_gt[i][0]), int(smpl_pred_keypoints_2d_gt[i][1])), 2, color = (255, 0, 0), thickness=-1)
-        cv2.circle(image_test, (int(smpl_pred_keypoints_2d_op[i][0]), int(smpl_pred_keypoints_2d_op[i][1])), 2, color = (255, 255, 255), thickness=-1)
-        #    
-    for i in range(14):
-        # i=43
         cv2.circle(image_test, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 2, color = (0, 0, 255), thickness=-1)
         cv2.circle(image_test, (int(smpl_pred_keypoints_2d_gt[i][0]), int(smpl_pred_keypoints_2d_gt[i][1])), 2, color = (255, 0, 0), thickness=-1)
+        cv2.circle(image_test, (int(smpl_pred_keypoints_2d_op[i][0]), int(smpl_pred_keypoints_2d_op[i][1])), 2, color = (255, 255, 255), thickness=-1)
+        #    
+    # for i in range(14):
+    #     # i=43
+    #     cv2.circle(image_test, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 2, color = (0, 0, 255), thickness=-1)
+    #     cv2.circle(image_test, (int(smpl_pred_keypoints_2d_gt[i][0]), int(smpl_pred_keypoints_2d_gt[i][1])), 2, color = (255, 0, 0), thickness=-1)
         
     cv2.imwrite(f'sp_op/h36_test.png', image_test)
 
