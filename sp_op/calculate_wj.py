@@ -5,8 +5,9 @@ sys.path.insert(0, '/SPINH')
 
 
 dataset_index = 0
-occluded = True
-dataset_name = ["3dpw", "h36m-p2"]
+occluded = False
+dataset_name = ["3dpw", "h36m-p2", "mpi-inf-3dhp", "3doh"]
+dataset = dataset_name[dataset_index]
 dataset = dataset_name[dataset_index]
 if occluded:
     path = "sp_op/" + dataset + "/" + dataset + "_occ_rel_"

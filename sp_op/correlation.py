@@ -21,13 +21,13 @@ import random
 # Define command-line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', default=None, help='Path to network checkpoint')
-parser.add_argument('--dataset', default='h36m-p2', choices=['h36m-p1', 'h36m-p2', 'lsp', '3dpw', 'mpi-inf-3dhp'], help='Choose  dataset')
+parser.add_argument('--dataset', default='h36m-p2', choices=['h36m-p1', 'h36m-p2', '3dpw', '3doh', 'mpi-inf-3dhp'], help='Choose  dataset')
 parser.add_argument('--log_freq', default=20 , type=int, help='Frequency of printing intermediate results')
 parser.add_argument('--batch_size', default=16, help='Batch size for testing')
 parser.add_argument('--shuffle', default=False, action='store_true', help='Shuffle data')
 parser.add_argument('--num_workers', default=0, type=int, help='Number of processes for data loading')
-parser.add_argument('--occ_size', type=int, default='40')  # Size of occluding window
-parser.add_argument('--pixel', type=int, default='0')  # Occluding window - pixel values
+parser.add_argument('--occ_size', type=int, default='40') # Size of occluding window
+parser.add_argument('--pixel', type=int, default='0') # Occluding window - pixel values
 
 def denormalize(images):
     # De-normalizing the image
@@ -104,7 +104,7 @@ def run_evaluation(model, dataset_name, dataset,
     sp_gt = np.zeros((len(dataset), 14))
     sp_op = np.zeros((len(dataset), 14))
     op_conf = np.zeros((len(dataset), 14))
-    occ_joint = True
+    occ_joint = False
     relative = True
     if occ_joint and relative:
         path = "sp_op/" + dataset_name + "/" + dataset_name + "_occ_rel_"
@@ -128,7 +128,7 @@ def run_evaluation(model, dataset_name, dataset,
             gt_label_2d = torch.tensor(gt_label_2d, dtype=torch.float).to(device)
             gt_spine_2d = gt_label_2d[:, [-1], :]
             gt_keypoints_2d = gt_label_2d[:,:-1,:]
-        else:
+        elif (dataset_name == "h36m-p2" or dataset_name == "h36m-p1"):
             S_2D = batch['S_2D']
             keywords_map=[0,1,2,3,4,5,6,7,8,9,10,11,12,17,16] # spine is 16
             S_2D = S_2D[:, keywords_map,:2] * 1000 # 1000 is for denormalizing (Initial size 1000)
@@ -141,6 +141,20 @@ def run_evaluation(model, dataset_name, dataset,
                     temp = transform(S_2D[i,j:j+1,:][0], center[i], scale[i], res, invert=0, rot=0)
                     gt_keypoints_2d[i,j,:] = temp
             gt_keypoints_2d = torch.tensor(gt_keypoints_2d, dtype=torch.float).to(device)
+            gt_spine_2d = gt_keypoints_2d[:, [-1], :].clone()
+            gt_keypoints_2d = gt_keypoints_2d[:,:-1,:]
+        elif dataset_name == "mpi-inf-3dhp":
+            keypoints = batch["keypoints"]
+            keypoints = (keypoints + 1) * constants.IMG_RES/2
+            map = [25,26,27,28,29,30,31,32,33,34,35,36,37,42,41] # 41 is spine
+            gt_keypoints_2d = keypoints[:,map,:2].to(device)
+            gt_spine_2d = gt_keypoints_2d[:, [-1], :].clone()
+            gt_keypoints_2d = gt_keypoints_2d[:,:-1,:]
+        elif dataset_name == "3doh":
+            keypoints = batch["keypoints"]
+            keypoints = (keypoints + 1) * constants.IMG_RES/2
+            map = [33, 30, 27, 26, 29, 32, 46, 44, 42, 41, 43, 45, 37, 40, 31] # 31 is spine
+            gt_keypoints_2d = keypoints[:,map,:2].to(device)
             gt_spine_2d = gt_keypoints_2d[:, [-1], :].clone()
             gt_keypoints_2d = gt_keypoints_2d[:,:-1,:]
         # 2D predicted keypoint
@@ -161,7 +175,7 @@ def run_evaluation(model, dataset_name, dataset,
         pred_spine_2d = smpl_pred_keypoints_2d[:, [41],:].clone()
         if relative:
             smpl_pred_keypoints_2d = smpl_pred_keypoints_2d - pred_spine_2d + gt_spine_2d
-        smpl_joint_map_op = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0]
+        smpl_joint_map_op = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0] # 9 12/ 15 reye
         smpl_joint_map_gt = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 37, 42]
         smpl_pred_keypoints_2d_op = smpl_pred_keypoints_2d[:, smpl_joint_map_op, :]
         smpl_pred_keypoints_2d_gt = smpl_pred_keypoints_2d[:, smpl_joint_map_gt, :]
@@ -231,7 +245,7 @@ def run_evaluation(model, dataset_name, dataset,
         # smpl_pred_keypoints_2d_gt = smpl_pred_keypoints_2d_gt[0]
         # smpl_pred_keypoints_2d_op = smpl_pred_keypoints_2d_op[0]
         # image_test = image_[0]
-        # for i in range(4,5):
+        # for i in range(14):
         #     # i=joint_index
         #     cv2.circle(image_test, (int(gt_keypoints_2d[i][0]), int(gt_keypoints_2d[i][1])), 3, color = (0, 255, 0), thickness=-1)
         #     cv2.circle(image_test, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 2, color = (0, 0, 255), thickness=-1)

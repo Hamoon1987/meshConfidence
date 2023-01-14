@@ -14,7 +14,7 @@ COCO_ROOT = ''
 MPI_INF_3DHP_ROOT = 'data/MPI_INF_3DHP'
 PW3D_ROOT = './data/3DPW'
 UPI_S1H_ROOT = ''
-
+OH50K3D_ROOT = './data/3DOH50K'
 # Output folder to save test/train npz files
 DATASET_NPZ_PATH = 'data/dataset_extras'
 
@@ -34,6 +34,7 @@ DATASET_FILES = [ {
                   #  'mpi-inf-3dhp': join(DATASET_NPZ_PATH, 'mpi_inf_3dhp_test_m.npz'),
                    '3dpw': join(DATASET_NPZ_PATH, '3dpw_test_m_15.npz'),
                   #  '3dpw': join(DATASET_NPZ_PATH, '3dpw_test.npz'),
+                  '3doh': join(DATASET_NPZ_PATH, '3doh50k_test.npz'),
                   },
 
                   {'h36m': join(DATASET_NPZ_PATH, 'h36m_train.npz'),
@@ -56,6 +57,7 @@ DATASET_FOLDERS = {'h36m': H36M_ROOT,
                    'coco': COCO_ROOT,
                    '3dpw': PW3D_ROOT,
                    'upi-s1h': UPI_S1H_ROOT,
+                   '3doh': OH50K3D_ROOT,
                 }
 
 CUBE_PARTS_FILE = 'data/cube_parts.npy'

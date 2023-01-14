@@ -1,4 +1,4 @@
-# python3 sp_op/correlation_vis.py --checkpoint=/SPINH/data/model_checkpoint.pt --dataset=h36m-p2 --log_freq=20
+# python3 sp_op/correlation_vis.py --checkpoint=/SPINH/data/model_checkpoint.pt --dataset=mpi-inf-3dhp --log_freq=20
 
 
 import sys
@@ -21,7 +21,7 @@ import random
 # Define command-line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', default=None, help='Path to network checkpoint')
-parser.add_argument('--dataset', default='h36m-p2', choices=['h36m-p1', 'h36m-p2', 'lsp', '3dpw', 'mpi-inf-3dhp'], help='Choose evaluation dataset')
+parser.add_argument('--dataset', default='h36m-p2', choices=['h36m-p1', 'h36m-p2', '3doh', '3dpw', 'mpi-inf-3dhp'], help='Choose evaluation dataset')
 parser.add_argument('--log_freq', default=20 , type=int, help='Frequency of printing intermediate results')
 parser.add_argument('--batch_size', default=1, help='Batch size for testing')
 parser.add_argument('--shuffle', default=False, action='store_true', help='Shuffle data')
@@ -120,6 +120,7 @@ def run_evaluation(model, dataset_name, dataset,
     # 454
     batch = next(itertools.islice(data_loader, step, None))
     images = batch['img'].to(device)
+    print(batch['imgname'][0])
     curr_batch_size = images.shape[0]
     # 2D GT from labels
     if dataset_name == "3dpw":
@@ -131,7 +132,7 @@ def run_evaluation(model, dataset_name, dataset,
         gt_label_2d = torch.tensor(gt_label_2d, dtype=torch.float).to(device)
         gt_spine_2d = gt_label_2d[:, [-1], :]
         gt_keypoints_2d = gt_label_2d[:,:-1,:]
-    else:
+    elif (dataset_name == "h36m-p2" or dataset_name == "h36m-p1"):
         S_2D = batch['S_2D']
         keywords_map=[0,1,2,3,4,5,6,7,8,9,10,11,12,17,16] # spine is 16
         S_2D = S_2D[:, keywords_map,:2] * 1000 # 1000 is for denormalizing (Initial size 1000)
@@ -144,6 +145,20 @@ def run_evaluation(model, dataset_name, dataset,
                 temp = transform(S_2D[i,j:j+1,:][0], center[i], scale[i], res, invert=0, rot=0)
                 gt_keypoints_2d[i,j,:] = temp
         gt_keypoints_2d = torch.tensor(gt_keypoints_2d, dtype=torch.float).to(device)
+        gt_spine_2d = gt_keypoints_2d[:, [-1], :].clone()
+        gt_keypoints_2d = gt_keypoints_2d[:,:-1,:]
+    elif dataset_name == "mpi-inf-3dhp":
+        keypoints = batch["keypoints"]
+        keypoints = (keypoints + 1) * constants.IMG_RES/2
+        map = [25,26,27,28,29,30,31,32,33,34,35,36,37,42,41] # 41 is spine
+        gt_keypoints_2d = keypoints[:,map,:2].to(device)
+        gt_spine_2d = gt_keypoints_2d[:, [-1], :].clone()
+        gt_keypoints_2d = gt_keypoints_2d[:,:-1,:]
+    elif dataset_name == "3doh":
+        keypoints = batch["keypoints"]
+        keypoints = (keypoints + 1) * constants.IMG_RES/2
+        map = [33, 30, 27, 26, 29, 32, 46, 44, 42, 41, 43, 45, 37, 40, 31] # 31 is spine
+        gt_keypoints_2d = keypoints[:,map,:2].to(device)
         gt_spine_2d = gt_keypoints_2d[:, [-1], :].clone()
         gt_keypoints_2d = gt_keypoints_2d[:,:-1,:]
     # 2D predicted keypoint
@@ -163,11 +178,12 @@ def run_evaluation(model, dataset_name, dataset,
                                         translation=camera_translation,
                                         focal_length=focal_length,
                                         camera_center=camera_center)
-    pred_spine_2d = smpl_pred_keypoints_2d[:, [41],:].clone()
+    # pred_spine_2d = smpl_pred_keypoints_2d[:, [41],:].clone()
+    pred_spine_2d = (((smpl_pred_keypoints_2d[:, [9],:] + smpl_pred_keypoints_2d[:, [12],:])/2) + smpl_pred_keypoints_2d[:, [37],:])/2
     if relative:
         smpl_pred_keypoints_2d = smpl_pred_keypoints_2d - pred_spine_2d + gt_spine_2d
     smpl_joint_map_op = [11, 10, 27, 28, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0]
-    smpl_joint_map_gt = [11, 10, 27, 28, 13, 14, 4, 3, 2, 5, 6, 7, 37, 42]
+    smpl_joint_map_gt = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 37, 42]
     smpl_pred_keypoints_2d_op = smpl_pred_keypoints_2d[:, smpl_joint_map_op, :]
     smpl_pred_keypoints_2d_gt = smpl_pred_keypoints_2d[:, smpl_joint_map_gt, :]
 
@@ -207,9 +223,8 @@ def run_evaluation(model, dataset_name, dataset,
         op_confidence_list.append(op_confidence)
     candidate_sorted_t = torch.stack(candidate_sorted_list, dim=0).to(device)
     op_confidence_t = torch.stack(op_confidence_list, dim=0).to(device).squeeze(2)
-    # a = torch.tensor([1,1,1.3])
-    print(candidate_sorted_t[:, [12], :])
-    op_spine = (((candidate_sorted_t[:, [2], :] + candidate_sorted_t[:, [3], :]) / 2) + candidate_sorted_t[:, [12], :]) / 2
+
+    op_spine = (((candidate_sorted_t[:, [2], :].clone() + candidate_sorted_t[:, [3], :].clone()) / 2) + 1.3*candidate_sorted_t[:, [12], :].clone()) / 2.3
     if relative:
         candidate_sorted_t = candidate_sorted_t - op_spine + gt_spine_2d
 
@@ -222,15 +237,14 @@ def run_evaluation(model, dataset_name, dataset,
     # Absolute error SPIN (MPJPE)
     error = torch.sqrt(((smpl_pred_keypoints_2d_gt_n - gt_keypoints_2d_n) ** 2).sum(dim=-1)).cpu().numpy()
     sp_gt[step * batch_size:step * batch_size + curr_batch_size] = error
-    print("sp_gt", error[0,13])
+    print("sp_gt", error[0,6])
     # SPIN - OpenPose (sp_op)
     error_ = torch.sqrt(((smpl_pred_keypoints_2d_op_n - candidate_sorted_t_n) ** 2).sum(dim=-1)).cpu().numpy()
     sp_op[step * batch_size:step * batch_size + curr_batch_size] = error_
-    print("sp_op", error_[0,13])
-    print(candidate_sorted_t[:,[13],:])
+    print("sp_op", error_[0,6])
     # OpenPose Confidence
     op_confidence_joint = op_confidence_t.cpu().numpy()
-    print("conf", op_confidence_joint[0,13])
+    print("conf", op_confidence_joint[0,6])
     op_conf[step * batch_size:step * batch_size + curr_batch_size] = op_confidence_joint
 
     # Visualize
@@ -242,14 +256,16 @@ def run_evaluation(model, dataset_name, dataset,
     image_test = image_[0]
     op_spine = op_spine[0]
     gt_spine_2d = gt_spine_2d[0]
+    pred_spine_2d = pred_spine_2d[0]
     for i in range(14):
         cv2.circle(image_test, (int(gt_keypoints_2d[i][0]), int(gt_keypoints_2d[i][1])), 3, color = (0, 255, 0), thickness=-1)
-        cv2.circle(image_test, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 2, color = (0, 0, 255), thickness=-1)
-        # cv2.circle(image_test, (int(smpl_pred_keypoints_2d_gt[i][0]), int(smpl_pred_keypoints_2d_gt[i][1])), 2, color = (255, 0, 0), thickness=-1)
-        cv2.circle(image_test, (int(smpl_pred_keypoints_2d_op[i][0]), int(smpl_pred_keypoints_2d_op[i][1])), 2, color = (255, 255, 255), thickness=-1)
-    # cv2.circle(image_test, (int(op_spine[0][0]), int(op_spine[0][1])), 3, color = (255, 255, 255), thickness=-1)
-    # cv2.circle(image_test, (int(gt_spine_2d[0][0]), int(gt_spine_2d[0][1])), 2, color = (0, 0, 0), thickness=-1)
-    gt_spine_2d
+        # cv2.circle(image_test, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 2, color = (0, 0, 255), thickness=-1)
+        cv2.circle(image_test, (int(smpl_pred_keypoints_2d_gt[i][0]), int(smpl_pred_keypoints_2d_gt[i][1])), 2, color = (255, 0, 0), thickness=-1)
+        # cv2.circle(image_test, (int(smpl_pred_keypoints_2d_op[i][0]), int(smpl_pred_keypoints_2d_op[i][1])), 2, color = (255, 255, 255), thickness=-1)
+    cv2.circle(image_test, (int(op_spine[0][0]), int(op_spine[0][1])), 4, color = (0, 0, 255), thickness=-1)
+    cv2.circle(image_test, (int(gt_spine_2d[0][0]), int(gt_spine_2d[0][1])), 4, color = (0, 255, 0), thickness=-1)
+    cv2.circle(image_test, (int(pred_spine_2d[0][0]), int(pred_spine_2d[0][1])), 4, color = (255, 0, 0), thickness=-1)
+    pred_spine_2d
     cv2.imwrite(f'sp_op/test.png', image_test)
 
 

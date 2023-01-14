@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.image as img
 
 dataset_index = 0
-occluded = True
-dataset_name = ["3dpw", "h36m-p2"]
+occluded = False
+dataset_name = ["3dpw", "h36m-p2", "mpi-inf-3dhp", "3doh"]
 dataset = dataset_name[dataset_index]
 if occluded:
     path = "sp_op/" + dataset + "/" + dataset + "_occ_rel_"
@@ -38,19 +38,20 @@ for joint_index in range (14):# choose the joint index
     sp_op_l = [v for i,v in enumerate(sp_op) if i not in op_conf_index]
     sp_gt_l = [v for i,v in enumerate(sp_gt) if i not in op_conf_index]
 
-    # sp_op_index = [i for i,v in enumerate(sp_op) if (v > 0.4)]
-    # sp_gt_index = [i for i,v in enumerate(sp_gt) if v < 0.1]
+    # sp_op_index = [i for i,v in enumerate(sp_op) if (v < 0.1)]
+    # sp_gt_index = [i for i,v in enumerate(sp_gt) if v > 0.2]
     # common_list = set(sp_op_index).intersection(sp_gt_index)
     # common_list = list(common_list)
     # common_list = [i for i in common_list if op_conf_j[i] > 0.1]
-    # print(np.sort(common_list)[:20])
-    # j=18
+    # print(np.sort(common_list)[:50])
+    # j=1143
     # print(sp_gt[j])
     # print(sp_op[j])
     # print(op_conf_j[j])
     # print(op_conf_lh[j])
     # print(op_conf_rh[j])
     # print(op_conf_t[j])
+
     # print("SPIN error = ", np.mean(sp_gt)*1000)
     # my_rho = round(np.corrcoef(sp_op, sp_gt)[0,1], 2)
     my_rho_l = round(np.corrcoef(sp_op_l, sp_gt_l)[0,1], 2)
