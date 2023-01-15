@@ -3,14 +3,13 @@ import matplotlib.pyplot as plt
 import matplotlib.image as img
 
 dataset_index = 0
-occluded = False
-dataset_name = ["3dpw", "h36m-p2", "mpi-inf-3dhp", "3doh"]
+occluded = True
+dataset_name = ["3dpw", "h36m-p1", "h36m-p2", "mpi-inf-3dhp", "3doh"]
 dataset = dataset_name[dataset_index]
 if occluded:
-    path = "sp_op/" + dataset + "/" + dataset + "_occ_rel_"
+    path = "sp_op/" + dataset + "/" + dataset + "_occ_"
 else:
-    # path = "/SPINH/sp_op/test_"
-    path = "sp_op/" + dataset + "/" + dataset + "_rel_"
+    path = "sp_op/" + dataset + "/" + dataset + "_"
 print(path)
 
 sp_op_all = np.load(path + 'sp_op.npy')
@@ -92,32 +91,32 @@ for joint_index in range (14):# choose the joint index
 print()
 # print("Average coefficient = ", (np.mean(rho_list)))
 print("Average coefficient l= ", (np.mean(rho_list_l)))
-# joint_names = ['Right Ankle',
-#                 'Right Knee',
-#                 'Right Hip',
-#                 'Left Hip',
-#                 'Left Knee',
-#                 'Left Ankle',
-#                 'Right Wrist',
-#                 'Right Elbow',
-#                 'Right Shoulder',
-#                 'Left Shoulder',
-#                 'Left Elbow',
-#                 'Left Wrist',
-#                 'Neck',
-#                 'Top of Head'
-#                 ]
-# w, h = 7, 2
-# f, axarr = plt.subplots(h, w)
-# f.set_size_inches((w*3, h*3))
+joint_names = ['Right Ankle',
+                'Right Knee',
+                'Right Hip',
+                'Left Hip',
+                'Left Knee',
+                'Left Ankle',
+                'Right Wrist',
+                'Right Elbow',
+                'Right Shoulder',
+                'Left Shoulder',
+                'Left Elbow',
+                'Left Wrist',
+                'Neck',
+                'Top of Head'
+                ]
+w, h = 7, 2
+f, axarr = plt.subplots(h, w)
+f.set_size_inches((w*3, h*3))
 
-# for jid in range(14):
-#     image = img.imread(path + f'ED_SE_{jid}.jpg')
-#     axarr[jid // w, jid % w].axis('off')
-#     axarr[jid // w, jid % w].set_title(
-#     f'{joint_names[jid]}'
-#     )
-#     axarr[jid // w, jid % w].imshow(image)
+for jid in range(14):
+    image = img.imread(path + f'ED_SE_{jid}.jpg')
+    axarr[jid // w, jid % w].axis('off')
+    axarr[jid // w, jid % w].set_title(
+    f'{joint_names[jid]}'
+    )
+    axarr[jid // w, jid % w].imshow(image)
 
-# f.set_tight_layout(tight=True)
-# plt.savefig(path + f'ED_SE_All.jpg')
+f.set_tight_layout(tight=True)
+plt.savefig(path + f'ED_SE_All.jpg')

@@ -104,14 +104,10 @@ def run_evaluation(model, dataset_name, dataset,
     sp_gt = np.zeros((len(dataset), 14))
     sp_op = np.zeros((len(dataset), 14))
     op_conf = np.zeros((len(dataset), 14))
-    occ_joint = False
+    occ_joint = True
     relative = True
-    if occ_joint and relative:
-        path = "sp_op/" + dataset_name + "/" + dataset_name + "_occ_rel_"
-    elif occ_joint:
+    if occ_joint:
         path = "sp_op/" + dataset_name + "/" + dataset_name + "_occ_"
-    elif relative:
-        path = "sp_op/" + dataset_name + "/" + dataset_name + "_rel_"
     else:
         path = "sp_op/" + dataset_name + "/" + dataset_name + "_"
     print(path)
@@ -175,7 +171,7 @@ def run_evaluation(model, dataset_name, dataset,
         pred_spine_2d = smpl_pred_keypoints_2d[:, [41],:].clone()
         if relative:
             smpl_pred_keypoints_2d = smpl_pred_keypoints_2d - pred_spine_2d + gt_spine_2d
-        smpl_joint_map_op = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0] # 9 12/ 15 reye
+        smpl_joint_map_op = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0] 
         smpl_joint_map_gt = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 37, 42]
         smpl_pred_keypoints_2d_op = smpl_pred_keypoints_2d[:, smpl_joint_map_op, :]
         smpl_pred_keypoints_2d_gt = smpl_pred_keypoints_2d[:, smpl_joint_map_gt, :]

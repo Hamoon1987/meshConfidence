@@ -180,7 +180,7 @@ def test_data(dataset_path, out_path, joints_idx, scaleFactor):
         annot2 = np.array(mat_as_h5['annot2'])
         annot3 = np.array(mat_as_h5['univ_annot3'])
         valid = np.array(mat_as_h5['valid_frame'])
-        print(mat_as_h5.keys())
+        
         for frame_i, valid_i in enumerate(valid):
             if valid_i == 0:
                 continue
@@ -220,11 +220,11 @@ def test_data(dataset_path, out_path, joints_idx, scaleFactor):
             scales_.append(scale)
             parts_.append(part)
             Ss_.append(S)
-
+    print(len(Ss_))
     # store the data struct
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
-    out_file = os.path.join(out_path, 'mpi_inf_3dhp_test_m.npz')
+    out_file = os.path.join(out_path, 'mpi_inf_3dhp_test_m2.npz')
     np.savez(out_file, imgname=imgnames_,
                        center=centers_,
                        scale=scales_,

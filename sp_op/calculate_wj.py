@@ -4,18 +4,18 @@ import sys
 sys.path.insert(0, '/SPINH')
 
 
-dataset_index = 0
-occluded = False
-dataset_name = ["3dpw", "h36m-p2", "mpi-inf-3dhp", "3doh"]
+dataset_index = 1
+occluded = True
+dataset_name = ["3dpw", "h36m-p1", "h36m-p2", "mpi-inf-3dhp", "3doh"]
 dataset = dataset_name[dataset_index]
 dataset = dataset_name[dataset_index]
 if occluded:
-    path = "sp_op/" + dataset + "/" + dataset + "_occ_rel_"
+    path = "sp_op/" + dataset + "/" + dataset + "_occ_"
 else:
-    path = "sp_op/" + dataset + "/" + dataset + "_rel_"
+    path = "sp_op/" + dataset + "/" + dataset + "_"
 print(path)
-sp_op = np.load(path + f'sp_op.npy')
-sp_gt = np.load(path + f'sp_gt.npy')
+sp_op = np.load(path + 'sp_op.npy')
+sp_gt = np.load(path + 'sp_gt.npy')
 sp_op = torch.tensor(sp_op)
 sp_gt = torch.tensor(sp_gt)
 
@@ -48,10 +48,6 @@ for i in range(len(sp_gt_max_ind)):
     if sp_gt_max_ind[i] in sp_op_max_ind[i]:
         eval[i] = 1
 eval = eval.cpu().numpy()
-# print(eval[:10])
-# print(sp_gt[6])
-# print(sp_gt_max_ind[6])
-# print(sp_op_max_ind[6])
 print(100 * eval.mean())
 
 
