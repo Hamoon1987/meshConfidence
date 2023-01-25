@@ -1,3 +1,4 @@
+# This code gets the SPIN and OpenPose model estimations and calculates SP-OP and SP-GT and OP-Confidence. Afterwards saves the results for further investigation. You can choose to add occlusion and whether align the predictions before subtracting. 
 # python3 sp_op/correlation.py --checkpoint=/SPINH/data/model_checkpoint.pt --dataset=h36m-p2 --log_freq=20
 
 
@@ -97,6 +98,7 @@ def run_evaluation(model, dataset_name, dataset,
                    num_workers=1, shuffle=False, log_freq=20):
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
     smpl_neutral = SMPL(config.SMPL_MODEL_DIR, create_transl=False).to(device)
     # Transfer model to the GPU
@@ -173,6 +175,9 @@ def run_evaluation(model, dataset_name, dataset,
             smpl_pred_keypoints_2d = smpl_pred_keypoints_2d - pred_spine_2d + gt_spine_2d
         smpl_joint_map_op = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0] 
         smpl_joint_map_gt = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 37, 42]
+        if (dataset_name == "h36m-p2" or dataset_name == "h36m-p1") :
+            smpl_joint_map_op = [11, 10, 27, 28, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0] 
+            smpl_joint_map_gt = [11, 10, 27, 28, 13, 14, 4, 3, 2, 5, 6, 7, 37, 42]
         smpl_pred_keypoints_2d_op = smpl_pred_keypoints_2d[:, smpl_joint_map_op, :]
         smpl_pred_keypoints_2d_gt = smpl_pred_keypoints_2d[:, smpl_joint_map_gt, :]
 
@@ -260,9 +265,9 @@ def run_evaluation(model, dataset_name, dataset,
     print('op_confidence: ' + str(op_conf.mean()))
     print()
 
-    np.save(path +'sp_op.npy', sp_op) # save
-    np.save(path +'sp_gt.npy', sp_gt) # save
-    np.save(path +'conf.npy', op_conf) # save
+    np.save(path +'train_sp_op.npy', sp_op) # save
+    np.save(path +'train_sp_gt.npy', sp_gt) # save
+    np.save(path +'train_conf.npy', op_conf) # save
 
 
 if __name__ == '__main__':

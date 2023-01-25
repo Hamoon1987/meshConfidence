@@ -9,8 +9,12 @@ imgnames_ = []
 scales_ = []
 centers_ = []
 parts_ = []
+pose_ = []
+shapes_ = []
+
 for i in data.keys():
-    
+    pose = data[i]['pose']
+    betas = data[i]['betas']
     bbox = data[i]["bbox"]
     bbox = [item for sublist in bbox for item in sublist]
     center = [(bbox[2]+bbox[0])/2, (bbox[3]+bbox[1])/2]
@@ -23,11 +27,15 @@ for i in data.keys():
     scales_.append(scale)
     centers_.append(center)
     parts_.append(S24)
+    pose_.append(pose[0])
+    shapes_.append(betas[0])
 
 np.savez("/SPINH/data/dataset_extras/3doh50k_test", imgname=imgnames_,
                     center=centers_,
                     scale=scales_,
-                    part=parts_)
+                    part=parts_,
+                    pose=pose_,
+                    shape=shapes_)
 
 
 # smpl_joints_2d = data["00000"]["smpl_joints_2d"]

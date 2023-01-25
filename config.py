@@ -32,8 +32,8 @@ DATASET_FILES = [ {
                    'lsp': join(DATASET_NPZ_PATH, 'lsp_dataset_test.npz'),
                   #  'mpi-inf-3dhp': join(DATASET_NPZ_PATH, 'mpi_inf_3dhp_valid.npz'),
                    'mpi-inf-3dhp': join(DATASET_NPZ_PATH, 'mpi_inf_3dhp_test_m.npz'),
+                  #  '3dpw': join(DATASET_NPZ_PATH, '3dpw_train_m.npz'),
                    '3dpw': join(DATASET_NPZ_PATH, '3dpw_test_m.npz'),
-                  #  '3dpw': join(DATASET_NPZ_PATH, '3dpw_test.npz'),
                   '3doh': join(DATASET_NPZ_PATH, '3doh50k_test.npz'),
                   },
 

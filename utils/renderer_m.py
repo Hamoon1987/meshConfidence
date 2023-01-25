@@ -98,8 +98,10 @@ class Renderer_m:
             vertex_colors = np.ones((n_vertices, 4))
             vertex_colors[:, 3] = alpha
             cm = mpl_cm.get_cmap('jet')
-            norm_gt = mpl_colors.Normalize(vmin=0, vmax=84)
-            # norm_gt = mpl_colors.Normalize()
+            # When you have the max and min values
+            # norm_gt = mpl_colors.Normalize(vmin=0, vmax=84)
+            # When you want to normalize
+            norm_gt = mpl_colors.Normalize()
             vertex_colors[:, :3] = cm(norm_gt(vertex_labels))[:, :3]
 
             return vertex_colors

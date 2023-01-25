@@ -1,10 +1,11 @@
-import numpy as np
-import mat73
-mat = mat73.loadmat('/SPINH/data/MPI_INF_3DHP/mpi_inf_3dhp_test_set/TS1/annot_data.mat')
-print(mat["annot3"].shape)
-
-
-
+# import numpy as np
+# import mat73
+# mat = mat73.loadmat('/SPINH/data/MPI_INF_3DHP/mpi_inf_3dhp_test_set/TS1/annot_data.mat')
+# print(mat["annot3"].shape)
+import torch
+torch.cuda.set_device(0)
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+print(device)
 # a = np.load("/SPINH/data/dataset_extras/mpi_inf_3dhp_valid.npz")
 # print(a['S'][0].shape)
 # print(a[10])

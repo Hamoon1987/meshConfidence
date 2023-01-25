@@ -4,10 +4,9 @@ import sys
 sys.path.insert(0, '/SPINH')
 
 
-dataset_index = 1
-occluded = True
+dataset_index = 4
+occluded = False
 dataset_name = ["3dpw", "h36m-p1", "h36m-p2", "mpi-inf-3dhp", "3doh"]
-dataset = dataset_name[dataset_index]
 dataset = dataset_name[dataset_index]
 if occluded:
     path = "sp_op/" + dataset + "/" + dataset + "_occ_"
@@ -19,7 +18,7 @@ sp_gt = np.load(path + 'sp_gt.npy')
 sp_op = torch.tensor(sp_op)
 sp_gt = torch.tensor(sp_gt)
 
-
+print(sp_gt.shape)
 
 # sp_gt_max_ind = torch.argmax(sp_gt, dim=1)
 # sp_gt_min_ind = torch.argmin(sp_gt, dim=1)
@@ -39,7 +38,6 @@ eval = eval.cpu().numpy()
 print(100 * eval.mean())
 
 
-
 ###### Model 2 GT 1
 sp_gt_max_ind = torch.argmax(sp_gt, dim=1)
 _, sp_op_max_ind = torch.topk(sp_op, 3)
@@ -49,6 +47,7 @@ for i in range(len(sp_gt_max_ind)):
         eval[i] = 1
 eval = eval.cpu().numpy()
 print(100 * eval.mean())
+
 
 
 # ####### Model 2 GT 2

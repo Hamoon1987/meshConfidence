@@ -14,10 +14,11 @@ def pw3d_extract(dataset_path, out_path):
     parts_, joint_position_, trans_ = [], [], []
     camera_extrinsics_, cam_intrinsics_, bbox_ = [], [], []
     # get a list of .pkl files in the directory
-    dataset_path = os.path.join(dataset_path, 'sequenceFiles', 'test')
+    dataset_path = os.path.join(dataset_path, 'sequenceFiles', 'train')
     files = [os.path.join(dataset_path, f) 
         for f in os.listdir(dataset_path) if f.endswith('.pkl')]
     # go through all the .pkl files
+    print(len(files))
     for filename in files:
         with open(filename, 'rb') as f:
             data = pickle.load(f, encoding='latin1')
@@ -63,8 +64,8 @@ def pw3d_extract(dataset_path, out_path):
                     extrinsics = valid_global_poses[valid_i][:3,:3]
                     pose[:3] = cv2.Rodrigues(np.dot(extrinsics, cv2.Rodrigues(pose[:3])[0]))[0].T[0]
                     transs = valid_trans[valid_i]
+                            
                     
-
                     imgnames_.append(valid_img_names[valid_i])
                     centers_.append(center)
                     scales_.append(scale)
@@ -89,17 +90,17 @@ def pw3d_extract(dataset_path, out_path):
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
     out_file = os.path.join(out_path,
-        '3dpw_test_m_15.npz')
-    np.savez(out_file, imgname=imgnames_[::15],
-                       center=centers_[::15],
-                       scale=scales_[::15],
-                       pose=poses_[::15],
-                       shape=shapes_[::15],
-                       gender=genders_[::15],
-                       camera_extrinsics= camera_extrinsics_[::15],
-                       camera_intrinsics = cam_intrinsics_[::15],
-                       joint_position = joint_position_[::15],
-                       bbox = bbox_[::5],
+        '3dpw_train_m.npz')
+    np.savez(out_file, imgname=imgnames_,
+                       center=centers_,
+                       scale=scales_,
+                       pose=poses_,
+                       shape=shapes_,
+                       gender=genders_,
+                       camera_extrinsics= camera_extrinsics_,
+                       camera_intrinsics = cam_intrinsics_,
+                       joint_position = joint_position_,
+                       bbox = bbox_,
                     #    trans = trans_[::50],
                     #    global_pose = global_pose_,
                     #    translation=translation_,
