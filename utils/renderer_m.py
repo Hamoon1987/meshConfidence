@@ -36,7 +36,7 @@ class Renderer_m:
         rend_imgs = make_grid(rend_imgs, nrow=2)
         return rend_imgs
 
-    def __call__(self, vertices, camera_translation, image, error_joint):
+    def __call__(self, vertices, camera_translation, image, error_joint, norm):
         material = pyrender.MetallicRoughnessMaterial(
             metallicFactor=0.2,
             alphaMode='OPAQUE',
@@ -46,7 +46,7 @@ class Renderer_m:
 
 
         # Add segmentation rendering: Assign colore to body parts
-        def part_segm_to_vertex_colors(part_segm, n_vertices, alpha=1.0):
+        def part_segm_to_vertex_colors(norm, part_segm, n_vertices, alpha=1.0):
             vertex_labels = np.zeros(n_vertices)
             vertex_labels_order = np.zeros(n_vertices)
 
@@ -98,17 +98,19 @@ class Renderer_m:
             vertex_colors = np.ones((n_vertices, 4))
             vertex_colors[:, 3] = alpha
             cm = mpl_cm.get_cmap('jet')
-            # When you have the max and min values
-            # norm_gt = mpl_colors.Normalize(vmin=0, vmax=84)
-            # When you want to normalize
-            norm_gt = mpl_colors.Normalize()
-            vertex_colors[:, :3] = cm(norm_gt(vertex_labels))[:, :3]
+            if norm:
+                # When you want to normalize
+                norm_gt = mpl_colors.Normalize()
+            elif not norm:
+                #When you have the max and min values
+                norm_gt = mpl_colors.Normalize(vmin=0, vmax=1)
 
+            vertex_colors[:, :3] = cm(norm_gt(vertex_labels))[:, :3]
             return vertex_colors
 
         # We add the whole body mesh but with different colors for each part
         part_segm = json.load(open('/SPINH/data/smpl_vert_segmentation.json'))
-        vertex_colors = part_segm_to_vertex_colors(part_segm, vertices.shape[0])
+        vertex_colors = part_segm_to_vertex_colors(norm, part_segm, vertices.shape[0])
         mesh = trimesh.Trimesh(vertices, self.faces, vertex_colors=vertex_colors)
         # mesh = trimesh.Trimesh(vertices, self.faces)
         rot = trimesh.transformations.rotation_matrix(

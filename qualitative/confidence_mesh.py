@@ -18,7 +18,7 @@ from utils.renderer_m import Renderer_m
 from utils.imutils import transform
 from classifier import classifier_model
 from classifier import classifier_wj_model
-
+from sklearn.preprocessing import StandardScaler
 
 def denormalize(images):
     # De-normalizing the image
@@ -38,7 +38,7 @@ dataset_name = dataset_names[dataset_index]
 dataset = BaseDataset(None, dataset_name, is_train=False)
 data_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
 """ Step """
-step = 0
+step = 50
 batch = next(itertools.islice(data_loader, step, None))
 images = batch['img'].to(device)
 batch_size = images.shape[0]
@@ -56,10 +56,11 @@ smpl_neutral = SMPL(config.SMPL_MODEL_DIR,
 
 
 # Load the classifier
-classifier = classifier_model(14, 10, 8, 6, 1)
-classifier = torch.load('/SPINH/classifier/classifier.pt')
+classifier = classifier_model()
+# checkpoint = torch.load("/SPINH/classifier/classifier.pt", map_location=device)
+# classifier.load_state_dict(checkpoint, strict=False)
 classifier.eval()
-# classifier_wj = torch.load('classifier/classifier_wj.pt')
+# classifier_wj = classifier_wj_model()
 # classifier_wj.eval()
 
 # Load sp-gt and sp-op
@@ -90,15 +91,24 @@ sp_gt = sp_gt[step]
 print("sp_op", sp_op)
 print("sp_gt", sp_gt)
 
-# input = sp_op
-# with torch.no_grad():
-#     output = classifier(input)
-#     output = output[0].cpu().numpy()
-#     print("classifier", output)
-#     if output > 0.5:
-#         output_wj = classifier_wj(input)
-#         print("classifier_wj" , output_wj.cpu().numpy())
-
+renderer_m = Renderer_m(focal_length=constants.FOCAL_LENGTH, img_res=constants.IMG_RES, faces=smpl.faces)
+max = torch.max(sp_gt)
+if max < 0.1:
+    img_confidence_gt = renderer_m(pred_vertices, camera_translation.copy(), img, sp_gt, norm=False)
+else:
+    img_confidence_gt = renderer_m(pred_vertices, camera_translation.copy(), img, sp_gt, norm=True)
+input = sp_op.float()
+print(input)
+with torch.no_grad():
+    output = classifier(input)
+    output = output[0].cpu().numpy()
+    print("classifier", output)
+    # if output > 0.5:
+    #     img_confidence_pred = renderer_m(pred_vertices, camera_translation.copy(), img, sp_op, norm=False)
+    # else:
+    #     output_wj = classifier_wj(input)
+    #     print("classifier_wj" , output_wj.cpu().numpy())
+    #     img_confidence_pred = renderer_m(pred_vertices, camera_translation.copy(), img, sp_op, norm=True)
 
 # # Render parametric shape
 # renderer_m = Renderer_m(focal_length=constants.FOCAL_LENGTH, img_res=constants.IMG_RES, faces=smpl.faces)
