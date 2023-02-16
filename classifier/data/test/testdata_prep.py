@@ -4,7 +4,7 @@ import sys
 sys.path.insert(0, '/SPINH')
 import pandas as pd
 
-dataset = "3dpw"
+dataset = "h36m_p1"
 occluded = True
 load_path = "sp_op/" + dataset + "/" + dataset + "_test_"
 if occluded:

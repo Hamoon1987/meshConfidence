@@ -107,18 +107,13 @@ def run_evaluation(model, dataset_name, dataset,
     sp_op = np.zeros((len(dataset), 14))
     op_conf = np.zeros((len(dataset), 14))
     occ_joint = False
-    relative = True
-    if occ_joint and relative:
-        path = "sp_op/" + dataset_name + "/" + dataset_name + "_occ_rel_"
-    elif occ_joint:
-        path = "sp_op/" + dataset_name + "/" + dataset_name + "_occ_"
-    elif relative:
-        path = "sp_op/" + dataset_name + "/" + dataset_name + "_rel_"
+    if occ_joint:
+        path = "sp_op/" + dataset_name + "/" + dataset_name + "_occ_train"
     else:
-        path = "sp_op/" + dataset_name + "/" + dataset_name + "_"
+        path = "sp_op/" + dataset_name + "/" + dataset_name + "_train"
     print(path)
     # for step, batch in enumerate(tqdm(data_loader, desc='Eval', total=len(data_loader))):
-    step = 0
+    step = 60
     batch = next(itertools.islice(data_loader, step, None))
     images = batch['img'].to(device)
     print(batch['imgname'][0])
@@ -181,8 +176,7 @@ def run_evaluation(model, dataset_name, dataset,
                                         camera_center=camera_center)
     pred_spine_2d = smpl_pred_keypoints_2d[:, [41],:].clone()
     # pred_spine_2d = (((smpl_pred_keypoints_2d[:, [9],:] + smpl_pred_keypoints_2d[:, [12],:])/2) + smpl_pred_keypoints_2d[:, [37],:])/2
-    if relative:
-        smpl_pred_keypoints_2d = smpl_pred_keypoints_2d - pred_spine_2d + gt_spine_2d
+    smpl_pred_keypoints_2d = smpl_pred_keypoints_2d - pred_spine_2d + gt_spine_2d
     smpl_joint_map_op = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 40, 0]
     smpl_joint_map_gt = [11, 10, 9, 12, 13, 14, 4, 3, 2, 5, 6, 7, 37, 42]
     if dataset_name == "h36m-p2":
@@ -229,8 +223,7 @@ def run_evaluation(model, dataset_name, dataset,
     op_confidence_t = torch.stack(op_confidence_list, dim=0).to(device).squeeze(2)
 
     op_spine = (((candidate_sorted_t[:, [2], :].clone() + candidate_sorted_t[:, [3], :].clone()) / 2) + 1.3*candidate_sorted_t[:, [12], :].clone()) / 2.3
-    if relative:
-        candidate_sorted_t = candidate_sorted_t - op_spine + gt_spine_2d
+    candidate_sorted_t = candidate_sorted_t - op_spine + gt_spine_2d
 
 
     candidate_sorted_t_n = normalize(candidate_sorted_t)
@@ -267,14 +260,15 @@ def run_evaluation(model, dataset_name, dataset,
     op_spine = op_spine[0]
     gt_spine_2d = gt_spine_2d[0]
     pred_spine_2d = pred_spine_2d[0]
+    print(image_test.shape)
     for i in range(14):
-        cv2.circle(image_test, (int(gt_keypoints_2d[i][0]), int(gt_keypoints_2d[i][1])), 3, color = (0, 255, 0), thickness=-1)
-        # cv2.circle(image_test, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 2, color = (0, 0, 255), thickness=-1)
+        cv2.circle(image_test, (int(gt_keypoints_2d[i][0]), int(gt_keypoints_2d[i][1])), 3, color = (127,0,255), thickness=-1)
+        cv2.circle(image_test, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 2, color = (0, 0, 255), thickness=-1)
         cv2.circle(image_test, (int(smpl_pred_keypoints_2d_gt[i][0]), int(smpl_pred_keypoints_2d_gt[i][1])), 2, color = (255, 0, 0), thickness=-1)
         # cv2.circle(image_test, (int(smpl_pred_keypoints_2d_op[i][0]), int(smpl_pred_keypoints_2d_op[i][1])), 2, color = (255, 255, 255), thickness=-1)
     # cv2.circle(image_test, (int(op_spine[0][0]), int(op_spine[0][1])), 4, color = (0, 0, 255), thickness=-1)
-    cv2.circle(image_test, (int(gt_spine_2d[0][0]), int(gt_spine_2d[0][1])), 4, color = (0, 255, 0), thickness=-1)
-    cv2.circle(image_test, (int(pred_spine_2d[0][0]), int(pred_spine_2d[0][1])), 4, color = (255, 0, 0), thickness=-1)
+    # cv2.circle(image_test, (int(gt_spine_2d[0][0]), int(gt_spine_2d[0][1])), 4, color = (0, 255, 0), thickness=-1)
+    # cv2.circle(image_test, (int(pred_spine_2d[0][0]), int(pred_spine_2d[0][1])), 4, color = (255, 0, 0), thickness=-1)
     cv2.imwrite(f'sp_op/test.png', image_test)
 
 

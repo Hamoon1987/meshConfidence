@@ -106,7 +106,7 @@ def run_evaluation(model, dataset_name, dataset,
     sp_gt = np.zeros((len(dataset), 14))
     sp_op = np.zeros((len(dataset), 14))
     op_conf = np.zeros((len(dataset), 14))
-    occ_joint = True
+    occ_joint = False
     relative = True
     if occ_joint:
         path = "sp_op/" + dataset_name + "/" + dataset_name + "_occ_"
@@ -239,20 +239,20 @@ def run_evaluation(model, dataset_name, dataset,
         op_conf[step * batch_size:step * batch_size + curr_batch_size] = op_confidence_joint
 
 
-        # # Visualize
-        # candidate_sorted_t = candidate_sorted_t[0]
-        # gt_keypoints_2d = gt_keypoints_2d[0]
-        # smpl_pred_keypoints_2d = smpl_pred_keypoints_2d[0]
-        # smpl_pred_keypoints_2d_gt = smpl_pred_keypoints_2d_gt[0]
-        # smpl_pred_keypoints_2d_op = smpl_pred_keypoints_2d_op[0]
-        # image_test = image_[0]
-        # for i in range(14):
-        #     # i=joint_index
-        #     cv2.circle(image_test, (int(gt_keypoints_2d[i][0]), int(gt_keypoints_2d[i][1])), 3, color = (0, 255, 0), thickness=-1)
-        #     cv2.circle(image_test, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 2, color = (0, 0, 255), thickness=-1)
-        #     cv2.circle(image_test, (int(smpl_pred_keypoints_2d_gt[i][0]), int(smpl_pred_keypoints_2d_gt[i][1])), 2, color = (255, 0, 0), thickness=-1)
-        #     cv2.circle(image_test, (int(smpl_pred_keypoints_2d_op[i][0]), int(smpl_pred_keypoints_2d_op[i][1])), 2, color = (255, 255, 255), thickness=-1)
-        # cv2.imwrite(f'sp_op/test.png', image_test)
+        # Visualize
+        candidate_sorted_t = candidate_sorted_t[0]
+        gt_keypoints_2d = gt_keypoints_2d[0]
+        smpl_pred_keypoints_2d = smpl_pred_keypoints_2d[0]
+        smpl_pred_keypoints_2d_gt = smpl_pred_keypoints_2d_gt[0]
+        smpl_pred_keypoints_2d_op = smpl_pred_keypoints_2d_op[0]
+        image_test = image_[0]
+        for i in range(14):
+            # i=joint_index
+            cv2.circle(image_test, (int(gt_keypoints_2d[i][0]), int(gt_keypoints_2d[i][1])), 3, color = (0, 255, 0), thickness=-1)
+            cv2.circle(image_test, (int(candidate_sorted_t[i][0]), int(candidate_sorted_t[i][1])), 2, color = (0, 0, 255), thickness=-1)
+            cv2.circle(image_test, (int(smpl_pred_keypoints_2d_gt[i][0]), int(smpl_pred_keypoints_2d_gt[i][1])), 2, color = (255, 0, 0), thickness=-1)
+            cv2.circle(image_test, (int(smpl_pred_keypoints_2d_op[i][0]), int(smpl_pred_keypoints_2d_op[i][1])), 2, color = (255, 255, 255), thickness=-1)
+        cv2.imwrite(f'sp_op/test.png', image_test)
 
 
     # Print final results during evaluation
@@ -265,9 +265,9 @@ def run_evaluation(model, dataset_name, dataset,
     print('op_confidence: ' + str(op_conf.mean()))
     print()
 
-    np.save(path +'train_sp_op.npy', sp_op) # save
-    np.save(path +'train_sp_gt.npy', sp_gt) # save
-    np.save(path +'train_conf.npy', op_conf) # save
+    np.save(path +'test_sp_op.npy', sp_op) # save
+    np.save(path +'test_sp_gt.npy', sp_gt) # save
+    np.save(path +'test_conf.npy', op_conf) # save
 
 
 if __name__ == '__main__':

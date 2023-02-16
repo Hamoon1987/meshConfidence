@@ -1,5 +1,5 @@
 # SPINH
-1- Go to server creat a folder SPINH  
+1- Go to server create a folder SPINH  
 2- Copy the dockerfile    
 3- Build the docker image based on the dockerfile: docker image build -t my_spinh .  
 4- Run the container from the image: docker container run -d -it --gpus all --name my_spinh spinh  

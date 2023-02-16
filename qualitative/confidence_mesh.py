@@ -19,6 +19,10 @@ from utils.imutils import transform
 from classifier import classifier_model
 from classifier import classifier_wj_model
 from sklearn.preprocessing import StandardScaler
+from classifier.classifier_config import args
+import torch.nn as nn
+
+
 
 def denormalize(images):
     # De-normalizing the image
@@ -31,14 +35,14 @@ def denormalize(images):
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 print(device)
-dataset_index = 0
+dataset_index = 3
 occluded = False
-dataset_names = ["3dpw", "h36m-p1", "h36m-p2", "mpi-inf-3dhp", "3doh"]
+dataset_names = ["3dpw", "h36m_p1", "h36m-p2", "3doh"]
 dataset_name = dataset_names[dataset_index]
 dataset = BaseDataset(None, dataset_name, is_train=False)
 data_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
 """ Step """
-step = 50
+step = 0
 batch = next(itertools.islice(data_loader, step, None))
 images = batch['img'].to(device)
 batch_size = images.shape[0]
@@ -57,11 +61,9 @@ smpl_neutral = SMPL(config.SMPL_MODEL_DIR,
 
 # Load the classifier
 classifier = classifier_model()
-# checkpoint = torch.load("/SPINH/classifier/classifier.pt", map_location=device)
-# classifier.load_state_dict(checkpoint, strict=False)
 classifier.eval()
-# classifier_wj = classifier_wj_model()
-# classifier_wj.eval()
+classifier_wj = classifier_wj_model()
+classifier_wj.eval()
 
 # Load sp-gt and sp-op
 if occluded:
@@ -88,34 +90,48 @@ images = denormalize(images)
 img = images[0]
 sp_op = sp_op[step]
 sp_gt = sp_gt[step]
-print("sp_op", sp_op)
-print("sp_gt", sp_gt)
+# print("sp_op", sp_op)
+# print("sp_gt", sp_gt)
+
 
 renderer_m = Renderer_m(focal_length=constants.FOCAL_LENGTH, img_res=constants.IMG_RES, faces=smpl.faces)
+renderer = Renderer(focal_length=constants.FOCAL_LENGTH, img_res=constants.IMG_RES, faces=smpl.faces)
 max = torch.max(sp_gt)
 if max < 0.1:
     img_confidence_gt = renderer_m(pred_vertices, camera_translation.copy(), img, sp_gt, norm=False)
+    img_confidence_gt_mesh = renderer(pred_vertices, camera_translation.copy(), img, (0,255,128,1))
 else:
     img_confidence_gt = renderer_m(pred_vertices, camera_translation.copy(), img, sp_gt, norm=True)
+    img_confidence_gt_mesh = renderer(pred_vertices, camera_translation.copy(), img, (0.8, 0.3, 0.3, 1))
+
+
+# Standardize
+mean = torch.tensor(constants.sp_op_NORM_MEAN, dtype=torch.float)
+std = torch.tensor(constants.sp_op_NORM_STD, dtype=torch.float)
+sp_op = sp_op.float()
+sp_op = (sp_op - mean)/torch.sqrt(std)
 input = sp_op.float()
-print(input)
+softmax = nn.Softmax(dim=0)
 with torch.no_grad():
     output = classifier(input)
+    output_wj = classifier_wj(input)
+    # output_wj = output_wj.cpu().numpy()
+    # print("classifier_wj" , output_wj)
+    output_wj = softmax(output_wj)
+    # print("classifier_wj softamx" , output_wj)
     output = output[0].cpu().numpy()
-    print("classifier", output)
-    # if output > 0.5:
-    #     img_confidence_pred = renderer_m(pred_vertices, camera_translation.copy(), img, sp_op, norm=False)
-    # else:
-    #     output_wj = classifier_wj(input)
-    #     print("classifier_wj" , output_wj.cpu().numpy())
-    #     img_confidence_pred = renderer_m(pred_vertices, camera_translation.copy(), img, sp_op, norm=True)
+    # print("classifier", output)
+    if output > 0.5:
+        img_confidence_pred = renderer_m(pred_vertices, camera_translation.copy(), img, sp_op, norm=False)
+        img_confidence_pred_mesh = renderer(pred_vertices, camera_translation.copy(), img, (0,255,128,1))
+    else:
+        img_confidence_pred = renderer_m(pred_vertices, camera_translation.copy(), img, output_wj, norm=True)
+        img_confidence_pred_mesh = renderer(pred_vertices, camera_translation.copy(), img, (0.8, 0.3, 0.3, 1))
 
-# # Render parametric shape
-# renderer_m = Renderer_m(focal_length=constants.FOCAL_LENGTH, img_res=constants.IMG_RES, faces=smpl.faces)
-# img_confidence_pred = renderer_m(pred_vertices, camera_translation.copy(), img, sp_op)
-# img_confidence_gt = renderer_m(pred_vertices, camera_translation.copy(), img, sp_gt)
 
-# # Save reconstructions
-# cv2.imwrite(f'qualitative/{dataset_name}_img_{step}_orig.png',  255 * img[:,:,::-1])
-# cv2.imwrite(f'qualitative/{dataset_name}_img_{step}_confidence_pred.png',  255 * img_confidence_pred[:,:,::-1])
-# cv2.imwrite(f'qualitative/{dataset_name}_img_{step}_confidence_gt.png',  255 * img_confidence_gt[:,:,::-1])
+# Save reconstructions
+cv2.imwrite(f'qualitative/{dataset_name}_img_{step}_orig.png',  255 * img[:,:,::-1])
+cv2.imwrite(f'qualitative/{dataset_name}_img_{step}_wj_confidence_pred.png',  255 * img_confidence_pred[:,:,::-1])
+cv2.imwrite(f'qualitative/{dataset_name}_img_{step}_wj_confidence_gt.png',  255 * img_confidence_gt[:,:,::-1])
+cv2.imwrite(f'qualitative/{dataset_name}_img_{step}_mesh_confidence_pred.png',  255 * img_confidence_pred_mesh[:,:,::-1])
+cv2.imwrite(f'qualitative/{dataset_name}_img_{step}_mesh_confidence_gt.png',  255 * img_confidence_gt_mesh[:,:,::-1])

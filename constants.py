@@ -11,6 +11,14 @@ We keep a superset of 24 joints such that we include all joints from every datas
 If a dataset doesn't provide annotations for a specific joint, we simply ignore it.
 The joints used here are the following:
 """
+
+# Mean and standard deviation for normalizing input sp_op
+sp_op_NORM_MEAN = [0.1574, 0.1396, 0.0828, 0.0832, 0.1366, 0.1484, 0.3617, 0.2000, 0.0988, 0.1021, 0.1727, 0.2965, 0.0620, 0.6291]
+sp_op_NORM_STD = [5.8423e-02, 4.9447e-02, 2.2038e-03, 2.6574e-03, 5.7095e-02, 5.1747e-02,
+        3.5120e-01, 1.7479e-01, 1.3567e-02, 9.0699e-03, 1.3944e-01, 2.7739e-01,
+        1.1868e-03, 7.2544e-01]
+
+
 JOINT_NAMES = [
 # 25 OpenPose joints (in the order provided by OpenPose)
 'OP Nose',

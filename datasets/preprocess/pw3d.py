@@ -86,7 +86,7 @@ def pw3d_extract(dataset_path, out_path):
     # print(cam_intrinsics_[0].shape)
     # print(camera_extrinsics_[0].shape)
     # print(joint_position_[0])
-    # print(len(trans_))
+    print(len(imgnames_))
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
     out_file = os.path.join(out_path,

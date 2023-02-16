@@ -12,7 +12,7 @@ class Model(nn.Module):
         self.fc2 = nn.Linear(L1, L2)
         self.fc3 = nn.Linear(L2, L3)
         self.fc4 = nn.Linear(L3, output_features)
-        self.sigmoid = nn.Sigmoid()
+        self.softmax = nn.Softmax(dim=1)
         self.relu = nn.ReLU()
     
     def forward(self, x):
@@ -24,7 +24,7 @@ class Model(nn.Module):
         out = self.fc3(out)
         out = self.relu(out)
         out = self.fc4(out)
-        # out = self.sigmoid(out)
+        # out = self.softmax(out)
         return out
 
 def classifier_wj_model(pretrain=True):

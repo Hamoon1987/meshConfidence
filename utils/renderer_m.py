@@ -103,7 +103,7 @@ class Renderer_m:
                 norm_gt = mpl_colors.Normalize()
             elif not norm:
                 #When you have the max and min values
-                norm_gt = mpl_colors.Normalize(vmin=0, vmax=1)
+                norm_gt = mpl_colors.Normalize(vmin=0, vmax=10)
 
             vertex_colors[:, :3] = cm(norm_gt(vertex_labels))[:, :3]
             return vertex_colors

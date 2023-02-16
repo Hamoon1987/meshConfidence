@@ -2,14 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as img
 
-dataset_index = 0
-occluded = True
-dataset_name = ["3dpw", "h36m-p1", "h36m-p2", "mpi-inf-3dhp", "3doh"]
+dataset_index = 1
+occluded = False
+dataset_name = ["3dpw", "h36m_p1", "h36m-p2", "mpi-inf-3dhp", "3doh"]
 dataset = dataset_name[dataset_index]
 if occluded:
-    path = "sp_op/" + dataset + "/" + dataset + "_occ_"
+    path = "sp_op/" + dataset + "/" + dataset + "_occ_test_"
 else:
-    path = "sp_op/" + dataset + "/" + dataset + "_"
+    path = "sp_op/" + dataset + "/" + dataset + "_train_"
 print(path)
 
 sp_op_all = np.load(path + 'sp_op.npy')
@@ -64,8 +64,8 @@ for joint_index in range (14):# choose the joint index
     ax.scatter(sp_op_l, sp_gt_l, s=1, c='r')
     # ax.scatter(sp_op[j], sp_gt[j], s=15, c='k')
     # ax.scatter(op_conf_l, op_mpjpe_l, s=1, c='b')
-    plt.xlim([0, 0.6])
-    plt.ylim([0, 0.6])
+    # plt.xlim([0, 0.6])
+    # plt.ylim([0, 0.6])
     plt.xlabel('ED',fontsize=38)
     plt.ylabel('SE',fontsize=38)
     # We change the fontsize of minor ticks label 
