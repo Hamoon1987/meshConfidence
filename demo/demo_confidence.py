@@ -5,7 +5,7 @@ Provide a cropped and centered image and the results show the confidence on the 
 ```
 Example with cropped and centered image
 ```
-python3 demo/demo_confidence.py --checkpoint=data/model_checkpoint.pt --img=examples/im1010.png
+python3 demo/demo_confidence.py --checkpoint=data/model_checkpoint.pt --img=demo/3doh_img_0_orig.png
 ```
 """
 import sys

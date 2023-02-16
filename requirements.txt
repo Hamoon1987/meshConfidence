@@ -2,7 +2,7 @@ neural-renderer-pytorch
 numpy
 opencv-python
 pyopengl
-pyrender
+# pyrender
 scikit-image
 scipy==1.0.0
 tensorboard
