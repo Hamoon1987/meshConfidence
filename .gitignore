@@ -79,7 +79,7 @@ coverage.xml
 *.mo
 *.pot
 
-sp_op/*.npy
+
 # Django stuff:
 *.log
 local_settings.py
@@ -141,10 +141,11 @@ logs/
 # vim swap files
 *.swp
 *.pyc
+# classifiers traind model
+classifier/mesh/classifier.pt
+classifier/wj/classifier_wj.pt
 # data files
 data/*
-occluded_images/*
-occluded_images01/*
 # But not the README
 !data/README.md
 
