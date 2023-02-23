@@ -141,9 +141,11 @@ logs/
 # vim swap files
 *.swp
 *.pyc
-# classifiers traind model
+# classifiers trained model
 classifier/mesh/classifier.pt
 classifier/wj/classifier_wj.pt
+# classifier training and testing data
+classifier/data/*.csv
 # data files
 data/*
 # But not the README
