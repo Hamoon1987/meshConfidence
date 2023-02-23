@@ -15,7 +15,7 @@ wget http://visiondata.cis.upenn.edu/spin/model_checkpoint.pt --directory-prefix
 wget https://github.com/vchoutas/smplify-x/raw/master/smplifyx/prior.py -O smplify/prior.py
 
 # Get the .npz files that for datasets
-wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1-Pb3cGy_wsNR6ypbn_oD5FRoqRMDJ9xm' -O data/dataset_extras/3doh50k_test.npz
-wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1-dDfH5ykGLibu5_0Q-sqaa6uoS9gwjDr' -O data/dataset_extras/3dpw_train_m.npz
-wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1-gHCFh3D0HM1k_0FJXQXro7jeCSfUCCW' -O data/dataset_extras/h36m_valid_protocol1_m.npz
-wget --no-check-certificate 'https://docs.google.com/uc?export=download&id=1-TZwSPIAbgg1Yf_Oel2V58cDeI2_RDTS' -O data/dataset_extras/3dpw_test_m.npz
+gdown https://drive.google.com/uc?id=1-Pb3cGy_wsNR6ypbn_oD5FRoqRMDJ9xm  -O data/dataset_extras/3doh50k_test.npz
+gdown https://drive.google.com/uc?id=1-TZwSPIAbgg1Yf_Oel2V58cDeI2_RDTS  -O data/dataset_extras/3dpw_test_m.npz
+gdown https://drive.google.com/uc?id=1-dDfH5ykGLibu5_0Q-sqaa6uoS9gwjDr  -O data/dataset_extras/3dpw_train_m.npz
+gdown https://drive.google.com/uc?id=1-gHCFh3D0HM1k_0FJXQXro7jeCSfUCCW  -O data/dataset_extras/h36m_valid_protocol1_m.npz

@@ -9,7 +9,7 @@ from classifier_wj_model import classifier_wj_model
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model = classifier_wj_model().to(device)
 model.eval()
-test_classifier_dataset = Classifier_Dataset("classifier/data/test/occ_3doh_test.csv")
+test_classifier_dataset = Classifier_Dataset("classifier/data/test/3doh_test.csv")
 test_dataloader = torch.utils.data.DataLoader(test_classifier_dataset, batch_size = args.batch_size, shuffle = False)
 running_corrects=0
 running_corrects_topk=0

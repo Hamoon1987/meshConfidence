@@ -1,4 +1,5 @@
 # python3 sensitivity/SPIN_image_sensitivity.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --img_number=0
+
 # This can run through whole dataset and moves the occlusion over each image and generates the occluded images and SPIN error per joint and as average
 # Gets one image and moves the occluder
 import sys

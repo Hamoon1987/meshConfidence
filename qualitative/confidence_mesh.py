@@ -35,7 +35,7 @@ def denormalize(images):
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 print(device)
-dataset_index = 1
+dataset_index = 2
 occluded = False
 dataset_names = ["3dpw", "h36m_p1", "3doh"]
 dataset_name = dataset_names[dataset_index]
