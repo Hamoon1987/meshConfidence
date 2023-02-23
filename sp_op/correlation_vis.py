@@ -1,5 +1,5 @@
 
-# python3 sp_op/correlation_vis.py --checkpoint=/SPINH/data/model_checkpoint.pt --dataset=mpi-inf-3dhp --log_freq=20
+# python3 sp_op/correlation_vis.py --checkpoint=/SPINH/data/model_checkpoint.pt --dataset=3dpw --log_freq=20
 
 
 import sys
@@ -113,7 +113,7 @@ def run_evaluation(model, dataset_name, dataset,
         path = "sp_op/" + dataset_name + "/" + dataset_name + "_train"
     print(path)
     # for step, batch in enumerate(tqdm(data_loader, desc='Eval', total=len(data_loader))):
-    step = 60
+    step = 0
     batch = next(itertools.islice(data_loader, step, None))
     images = batch['img'].to(device)
     print(batch['imgname'][0])

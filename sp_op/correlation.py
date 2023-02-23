@@ -1,5 +1,5 @@
 # This code gets the SPIN and OpenPose model estimations and calculates SP-OP and SP-GT and OP-Confidence. Afterwards saves the results for further investigation. You can choose to add occlusion and whether align the predictions before subtracting. 
-# python3 sp_op/correlation.py --checkpoint=/SPINH/data/model_checkpoint.pt --dataset=h36m-p2 --log_freq=20
+# python3 sp_op/correlation.py --checkpoint=/SPINH/data/model_checkpoint.pt --dataset=h36m_p1 --log_freq=20
 
 
 import sys
@@ -22,7 +22,7 @@ import random
 # Define command-line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', default=None, help='Path to network checkpoint')
-parser.add_argument('--dataset', default='h36m-p2', choices=['h36m-p1', 'h36m-p2', '3dpw', '3doh', 'mpi-inf-3dhp'], help='Choose  dataset')
+parser.add_argument('--dataset', default='h36m-p2', choices=['h36m_p1', 'h36m-p2', '3dpw', '3doh', 'mpi-inf-3dhp'], help='Choose  dataset')
 parser.add_argument('--log_freq', default=20 , type=int, help='Frequency of printing intermediate results')
 parser.add_argument('--batch_size', default=16, help='Batch size for testing')
 parser.add_argument('--shuffle', default=False, action='store_true', help='Shuffle data')
@@ -126,7 +126,7 @@ def run_evaluation(model, dataset_name, dataset,
             gt_label_2d = torch.tensor(gt_label_2d, dtype=torch.float).to(device)
             gt_spine_2d = gt_label_2d[:, [-1], :]
             gt_keypoints_2d = gt_label_2d[:,:-1,:]
-        elif (dataset_name == "h36m-p2" or dataset_name == "h36m-p1"):
+        elif (dataset_name == "h36m_p2" or dataset_name == "h36m_p1"):
             S_2D = batch['S_2D']
             keywords_map=[0,1,2,3,4,5,6,7,8,9,10,11,12,17,16] # spine is 16
             S_2D = S_2D[:, keywords_map,:2] * 1000 # 1000 is for denormalizing (Initial size 1000)
