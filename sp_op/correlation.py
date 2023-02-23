@@ -22,7 +22,7 @@ import random
 # Define command-line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', default=None, help='Path to network checkpoint')
-parser.add_argument('--dataset', default='h36m-p2', choices=['h36m_p1', 'h36m-p2', '3dpw', '3doh', 'mpi-inf-3dhp'], help='Choose  dataset')
+parser.add_argument('--dataset', default='3dpw', choices=['h36m_p1', '3dpw', '3doh'], help='Choose  dataset')
 parser.add_argument('--log_freq', default=20 , type=int, help='Frequency of printing intermediate results')
 parser.add_argument('--batch_size', default=16, help='Batch size for testing')
 parser.add_argument('--shuffle', default=False, action='store_true', help='Shuffle data')
