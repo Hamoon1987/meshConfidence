@@ -41,14 +41,11 @@ def denormalize(images):
 def qualify(args):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     print(device)
-    dataset_index = 2
-    occluded = False
-    dataset_names = ["3dpw", "h36m_p1", "3doh"]
-    dataset_name = dataset_names[dataset_index]
+    dataset_name = args.dataset
     dataset = BaseDataset(None, dataset_name, is_train=False)
     data_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=0)
     """ Step """
-    step = 0
+    step = args.img_number
     batch = next(itertools.islice(data_loader, step, None))
     images = batch['img'].to(device)
     batch_size = images.shape[0]
@@ -72,10 +69,7 @@ def qualify(args):
     classifier_wj.eval()
 
     # Load sp-gt and sp-op
-    if occluded:
-        path = "sp_op/" + dataset_name + "/" + dataset_name + "_occ_"
-    else:
-        path = "sp_op/" + dataset_name + "/" + dataset_name + "_test_"
+    path = "sp_op/" + dataset_name + "/" + dataset_name + "_test_"
     print(path)
     sp_op = np.load(path + 'sp_op.npy')
     sp_gt = np.load(path + 'sp_gt.npy')

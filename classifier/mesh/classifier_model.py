@@ -30,5 +30,5 @@ class Model(nn.Module):
 def classifier_model(pretrain=True):
     classifier = Model(14, 10, 8, 6, 1)
     if pretrain:
-        classifier.load_state_dict(torch.load('/SPINH/classifier/mesh/classifier.pt'))
+        classifier.load_state_dict(torch.load('classifier/mesh/classifier.pt'))
     return classifier

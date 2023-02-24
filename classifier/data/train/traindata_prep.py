@@ -5,7 +5,8 @@ sys.path.insert(0, '/meshConfidence')
 import pandas as pd
 import os
 
-
+if not os.path.isdir("classifier/data/val"):
+    os.makedirs("classifier/data/val")
 for dataset in ["3dpw", "h36m_p1"]:
     for occluded in [False, True]:
         load_path = "sp_op/" + dataset + "/" + dataset + "_train_"

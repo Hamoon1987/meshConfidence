@@ -109,7 +109,7 @@ class Renderer_m:
             return vertex_colors
 
         # We add the whole body mesh but with different colors for each part
-        part_segm = json.load(open('/SPINH/data/smpl_vert_segmentation.json'))
+        part_segm = json.load(open('data/smpl_vert_segmentation.json'))
         vertex_colors = part_segm_to_vertex_colors(norm, part_segm, vertices.shape[0])
         mesh = trimesh.Trimesh(vertices, self.faces, vertex_colors=vertex_colors)
         # mesh = trimesh.Trimesh(vertices, self.faces)

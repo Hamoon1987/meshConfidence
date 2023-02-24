@@ -1,4 +1,5 @@
 # python3 sensitivity/OP_sensitivity_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
+
 # This runs through whole dataset and occludes a particular joint on each image and generates the occluded images and OpenPose error per joint and as average
 # This code uses camera parameters to project the GT 3d joint positions
 import sys
