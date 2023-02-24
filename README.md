@@ -40,3 +40,24 @@ data/H36M/
 4. Now you can run the qualitative evaluation by choosing the dataset and the image number:
    - ```python3 qualitative/confidence_mesh.py --dataset=3dpw --img_number=0```
 
+## Run the sensitivity analysis:
+1. Get male and female models from [here](https://smpl.is.tue.mpg.de/) and put it in data/smpl folder  
+2. Now you can run sensitivity analysis for OpenPose and SPIN model for one image or the whole 3DPW dataset
+   - ```
+	python3 sensitivity/SPIN_image_sensitivity.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --img_number=0
+	python3 sensitivity/OP_image_sensitivity.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --img_number=0
+	python3 sensitivity/SPIN_sensitivity_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
+	python3 sensitivity/OP_sensitivity_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
+	```
+## Train the classifiers:
+1. You should run the sp_op/correlation.py for calculating ED for different datasets and saving the results (saved files are available)  
+2. Run the classifier/data/train/traindata_prep.py and classifier/data/test/testdata_prep.py to prepare the data. You should change the sp_op_NORM_MEAN and sp_op_NORM_STD values in constants.py with the new printed values for mean and std  
+3. Now you can train and evaluate the classifiers
+   - ```
+	python3 sclassifier/mesh/classifier_trainer.py
+	python3 classifier/wj/classifier_wj_trainer.py
+	python3 classifier/mesh/classifier_eval.py
+	python3 classifier/wj/classifier_wj_eval.py 
+	```  
+*Notice since the train validation separation and training process is random, the results might be slightly different each time. 
+
