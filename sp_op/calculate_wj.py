@@ -1,12 +1,12 @@
 import numpy as np
 import torch
 import sys
-sys.path.insert(0, '/SPINH')
+sys.path.insert(0, '/meshConfidence')
 
 
 dataset_index = 0
 occluded = False
-dataset_name = ["3dpw", "h36m_p1", "h36m-p2", "mpi-inf-3dhp", "3doh"]
+dataset_name = ["3dpw", "h36m_p1", "3doh"]
 dataset = dataset_name[dataset_index]
 if occluded:
     path = "sp_op/" + dataset + "/" + dataset + "_occ_test_"

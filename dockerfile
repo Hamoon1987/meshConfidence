@@ -15,7 +15,7 @@ RUN pip3 install tensorboard future
 RUN pip3 install freetype-py pyglet==1.5.27
 
 WORKDIR /
-RUN git clone -b base https://github.com/Hamoon1987/SPINH.git
+RUN git clone -b base https://github.com/Hamoon1987/meshConfidence
 WORKDIR /SPINH
 RUN pip3 install -r requirements.txt
 RUN git clone https://github.com/Hzzone/pytorch-openpose pytorchopenpose

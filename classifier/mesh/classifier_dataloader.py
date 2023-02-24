@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, '/SPINH')
+sys.path.insert(0, '/meshConfidence')
 from sklearn.utils import shuffle
 import torch
 import pandas as pd

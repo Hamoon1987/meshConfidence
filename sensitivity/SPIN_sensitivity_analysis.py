@@ -2,7 +2,7 @@
 # This runs through whole dataset and occludes a particular joint on each image and generates the occluded images and SPIN error per joint and as average
 # This code uses camera parameters to project the GT 3d joint positions
 import sys
-sys.path.insert(0, '/SPINH')
+sys.path.insert(0, '/meshConfidence')
 import time
 import math
 import torch

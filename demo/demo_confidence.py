@@ -9,7 +9,7 @@ python3 demo/demo_confidence.py --checkpoint=data/model_checkpoint.pt --img=demo
 ```
 """
 import sys
-sys.path.insert(0, '/SPINH')
+sys.path.insert(0, '/meshConfidence')
 import torch
 from torchvision.transforms import Normalize
 import numpy as np

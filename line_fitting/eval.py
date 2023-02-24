@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import sys
-sys.path.insert(0, '/SPINH')
+sys.path.insert(0, '/meshConfidence')
 
 
 dataset_index = 0

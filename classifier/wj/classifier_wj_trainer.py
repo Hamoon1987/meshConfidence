@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, '/SPINH')
+sys.path.insert(0, '/meshConfidence')
 from classifier_wj_model import Model
 from classifier_wj_dataloader import Classifier_Dataset
 import torch

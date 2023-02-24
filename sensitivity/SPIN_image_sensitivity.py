@@ -3,7 +3,7 @@
 # This can run through whole dataset and moves the occlusion over each image and generates the occluded images and SPIN error per joint and as average
 # Gets one image and moves the occluder
 import sys
-sys.path.insert(0, '/SPINH')
+sys.path.insert(0, '/meshConfidence')
 import math
 import torch
 import argparse

@@ -1,7 +1,7 @@
 
 
 import sys
-sys.path.insert(0, '/SPINH')
+sys.path.insert(0, '/meshConfidence')
 from torch.utils.data import DataLoader
 from datasets import BaseDataset
 import itertools
