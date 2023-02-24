@@ -53,11 +53,11 @@ python3 sensitivity/OP_sensitivity_analysis.py --checkpoint=data/model_checkpoin
 1. You should run the sp_op/correlation.py for calculating ED for different datasets and saving the results (saved files are available)  
 2. Run the classifier/data/train/traindata_prep.py and classifier/data/test/testdata_prep.py to prepare the data. You should change the sp_op_NORM_MEAN and sp_op_NORM_STD values in constants.py with the new printed values for mean and std  
 3. Now you can train and evaluate the classifiers
-   - ```
-	python3 sclassifier/mesh/classifier_trainer.py
-	python3 classifier/wj/classifier_wj_trainer.py
-	python3 classifier/mesh/classifier_eval.py
-	python3 classifier/wj/classifier_wj_eval.py 
-	```  
+```
+python3 sclassifier/mesh/classifier_trainer.py
+python3 classifier/wj/classifier_wj_trainer.py
+python3 classifier/mesh/classifier_eval.py
+python3 classifier/wj/classifier_wj_eval.py 
+```  
 *Notice since the train validation separation and training process is random, the results might be slightly different each time. 
 
