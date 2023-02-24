@@ -2,7 +2,7 @@
 The goal of this project is to add confidence to the generated mesh by the SPIN model. A sample shown in the figure below, where the occlusion forces the SPIN model to estimate inaccurate mesh. However, our model detects the inaccurate parts of the mesh.
 
 <p align="center">
-	<img width="600" height="200" src="teaser.png">
+	<img width="600" height="300" src="teaser.png">
 </p>
 
 ## To run the demo:
