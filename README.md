@@ -10,13 +10,13 @@ The goal of this project is to add confidence to the generated mesh by the SPIN 
 - Create a docker file with the content.  
 - Create the docker image: ```docker image build -t confidence .```  
 - Create and run the container: ```docker run -it -d --gpus all --name my_confidence confidence```  
-- Attach to the running container and open meshConfidence folder  
-- Download the body_pose_model.pth from [here](https://github.com/Hzzone/pytorch-openpose) and add to openpose/models  
-- Get the smpl_vert_segmentation.json from [here](https://github.com/Meshcapade/wiki/tree/main/assets/SMPL_body_segmentation/smpl) and put it in data folder  
+- Attach to the running container and open ```meshConfidence``` folder  
+- Download the body_pose_model.pth from [here](https://github.com/Hzzone/pytorch-openpose) and add to ```openpose/models```  
+- Get the smpl_vert_segmentation.json from [here](https://github.com/Meshcapade/wiki/tree/main/assets/SMPL_body_segmentation/smpl) and put it in ```data``` folder  
 - Get the pretrained MC and WJC:  
   - ```gdown https://drive.google.com/uc?id=1-CIm4wxL7dmMy6BD__f83gBfgzrEq6PM  -O classifier/mesh/classifier.pt```  
   - ```gdown https://drive.google.com/uc?id=1-Ndd8-dspqyHMpTTfpN05ADqPjwrNlOp -O classifier/wj/classifier_wj.pt```  
-- Now you can run the demo and choose a cropped and centered image as input. The result will be in demo folder
+- Now you can run the demo and choose a cropped and centered image as input. The result will be in the ```demo``` folder
   - ```python3 demo/demo_confidence.py --checkpoint=data/model_checkpoint.pt --img=demo/3doh_img_0_orig.png```  
 
 ## Run the qualitative evaluation:
