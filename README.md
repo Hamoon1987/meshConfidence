@@ -6,7 +6,7 @@ The goal of this project is to add confidence to the generated mesh by the SPIN 
 </p>
 
 ## Run the demo:
-- Go to your server and create a folder meshConfidence  
+- Go to your server and create a folder ```meshConfidence``` 
 - Create a docker file with the content.  
 - Create the docker image: ```docker image build -t confidence .```  
 - Create and run the container: ```docker run -it -d --gpus all --name my_confidence confidence```  
