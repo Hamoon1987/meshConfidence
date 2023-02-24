@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, '/SPINH')
+sys.path.insert(0, '/meshConfidence')
 import torch
 from classifier.mesh.classifier_config import args
 from classifier_dataloader import Classifier_Dataset
