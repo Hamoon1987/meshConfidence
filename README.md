@@ -1,26 +1,9 @@
-# SPINH
-1- Go to server create a folder SPINH  
-2- Copy the dockerfile    
-3- Build the docker image based on the dockerfile: docker image build -t my_spinh .  
-4- Run the container from the image: docker container run -d -it --gpus all --name my_spinh spinh  
-5- Start the docker container: docker start my_spinh  
-6- Connect to the container  
-7- Run the demo: python3 demo.py  
-8- Add the dataset: 3DPW to data/3DPPW  
-9- Add the new 3dpw_test_m.npz: python3 datasets/preprocess/pw3d.py  
-10- Copy SMPL_male amd SMPL_female  
+# Confidence on Mesh
+The goal of this project is to add confidence to the generated mesh by the SPIN model. A sample shown in the figure below, where the occlusion forces the SPIN model to estimate inaccurate mesh. However, our model detects the inaccurate parts of the mesh.
 
-To move a occluder over an image and project the MPJPE heatmap (SPIN) on it:  
-	python3 occlusion_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --img_number=0  
-  
-To occlude a joint throughout the dataset at a time and calculate the MPJPE (SPIN) in each case:  
-	python3 occlusion_analysis_joint.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw  
-  
-To project the calculated MPJPE on the mesh:  
-	python3 occlusion_mesh.py --error_list=[List of MPJPE (1x14)]  
-  
-To project OpenPose confidence on SPIN mesh:    
-	python3 sp_op_mesh.py  
-  
-To calculate the correlation of OpenPose and SPIN estimation difference and SPIN error for a particular joint throughout the 3dpw dataset:  
-	python3 op_sp.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --log_freq=20  
+![teaser](teaser.png)
+
+## To run the demo:
+1-	Go to your server and create a folder meshConfidence
+2-	Create a docker file with the content.
+3-	Create the docker image: ```docker image build -t confidence .```
