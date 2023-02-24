@@ -3,7 +3,7 @@ sys.path.insert(0, '/SPINH')
 from classifier_model import Model
 from classifier_dataloader import Classifier_Dataset
 import torch
-from classifier.classifier_config import args
+from classifier.mesh.classifier_config import args
 import matplotlib.pyplot as plt
 
 net = Model(14, 10, 8, 6, 1)

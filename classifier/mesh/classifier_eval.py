@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, '/SPINH')
 import torch
-from classifier.classifier_config import args
+from classifier.mesh.classifier_config import args
 from classifier_dataloader import Classifier_Dataset
 import numpy as np
 import pandas as pd
@@ -10,7 +10,7 @@ from classifier_model import classifier_model
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 model = classifier_model().to(device)
 model.eval()
-test_classifier_dataset = Classifier_Dataset("classifier/data/test/h36m_p1_test.csv")
+test_classifier_dataset = Classifier_Dataset("classifier/data/test/occ_h36m_p1_test.csv")
 test_dataloader = torch.utils.data.DataLoader(test_classifier_dataset, batch_size = args.batch_size, shuffle = False)
 # prediction_s1 = []
 running_corrects=0

@@ -3,7 +3,7 @@ sys.path.insert(0, '/SPINH')
 from classifier_wj_model import Model
 from classifier_wj_dataloader import Classifier_Dataset
 import torch
-from classifier.classifier_config import args
+from classifier.wj.classifier_wj_config import args
 import matplotlib.pyplot as plt
 
 net = Model(14, 28, 56, 28, 14)

@@ -4,7 +4,7 @@ from sklearn.utils import shuffle
 import torch
 import pandas as pd
 from torch.utils.data import Dataset
-from classifier.classifier_config import args
+import constants
 
 
 # Define the DataLoader Class
@@ -20,8 +20,8 @@ class Classifier_Dataset(Dataset):
         self.sp_op = data.iloc[:,:14].values
         self.label_wj = data.iloc[:,15].values
         # Standardize
-        self.mean = torch.tensor(args.mean, dtype=torch.float)
-        self.std = torch.tensor(args.std, dtype=torch.float)
+        self.mean = torch.tensor(constants.sp_op_NORM_MEAN, dtype=torch.float)
+        self.std = torch.tensor(constants.sp_op_NORM_STD, dtype=torch.float)
         self.sp_op = torch.tensor(self.sp_op, dtype=torch.float)
         self.sp_op = (self.sp_op - self.mean)/torch.sqrt(self.std)
 

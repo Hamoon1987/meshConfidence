@@ -6,7 +6,7 @@ import pandas as pd
 
 
 
-for dataset in ["3dpw", "h36m_p1"]:
+for dataset in ["3dpw", "h36m_p1", "3doh"]:
     for occluded in [False, True]:
         load_path = "sp_op/" + dataset + "/" + dataset + "_test_"
         if occluded:

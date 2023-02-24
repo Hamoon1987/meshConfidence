@@ -146,6 +146,7 @@ classifier/mesh/classifier.pt
 classifier/wj/classifier_wj.pt
 # classifier training and testing data
 classifier/data/*.csv
+classifier/*.pt
 # data files
 data/*
 # But not the README
