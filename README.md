@@ -38,5 +38,5 @@ data/H36M/
 |-----images
 ```
 4. Now you can run the qualitative evaluation by choosing the dataset and the image number:
-   -```python3 qualitative/confidence_mesh.py --dataset=3dpw --img_number=0```
+   - ```python3 qualitative/confidence_mesh.py --dataset=3dpw --img_number=0```
 
