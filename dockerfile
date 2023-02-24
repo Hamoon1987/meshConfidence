@@ -16,7 +16,7 @@ RUN pip3 install freetype-py pyglet==1.5.27
 
 WORKDIR /
 RUN git clone -b base https://github.com/Hamoon1987/meshConfidence
-WORKDIR /SPINH
+WORKDIR /meshConfidence
 RUN pip3 install -r requirements.txt
 RUN git clone https://github.com/Hzzone/pytorch-openpose pytorchopenpose
 RUN   sed -i "s|from src import util|from pytorchopenpose.src import util |g" pytorchopenpose/src/body.py
