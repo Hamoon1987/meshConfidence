@@ -43,12 +43,12 @@ data/H36M/
 ## Run the sensitivity analysis:
 1. Get male and female models from [here](https://smpl.is.tue.mpg.de/) and put it in data/smpl folder  
 2. Now you can run sensitivity analysis for OpenPose and SPIN model for one image or the whole 3DPW dataset
-   - ```
-	python3 sensitivity/SPIN_image_sensitivity.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --img_number=0
-	python3 sensitivity/OP_image_sensitivity.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --img_number=0
-	python3 sensitivity/SPIN_sensitivity_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
-	python3 sensitivity/OP_sensitivity_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
-	```
+```
+python3 sensitivity/SPIN_image_sensitivity.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --img_number=0
+python3 sensitivity/OP_image_sensitivity.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --img_number=0
+python3 sensitivity/SPIN_sensitivity_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
+python3 sensitivity/OP_sensitivity_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
+```
 ## Train the classifiers:
 1. You should run the sp_op/correlation.py for calculating ED for different datasets and saving the results (saved files are available)  
 2. Run the classifier/data/train/traindata_prep.py and classifier/data/test/testdata_prep.py to prepare the data. You should change the sp_op_NORM_MEAN and sp_op_NORM_STD values in constants.py with the new printed values for mean and std  
