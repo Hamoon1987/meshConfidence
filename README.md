@@ -1,6 +1,6 @@
 # Confidence on Mesh
 The goal of this project is to add confidence to the generated mesh by the SPIN model. A sample is shown in the figure below, where the occlusion forces the SPIN model to estimate inaccurate mesh. However, our model detects the inaccurate parts of the mesh.
-#test
+
 <p align="center">
 	<img width="450" height="300" src="walking.gif">
 </p>
@@ -49,7 +49,7 @@ python3 sensitivity/OP_image_sensitivity.py --checkpoint=data/model_checkpoint.p
 python3 sensitivity/SPIN_sensitivity_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
 python3 sensitivity/OP_sensitivity_analysis.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw
 ```
-## Train the classifiers:
+## Train the classifiers and Evaluate the model:
 - First, run the ```sp_op/correlation.py``` to calculate ED for different datasets and save the results (saved files are available)  
 - Run the ```classifier/data/train/traindata_prep.py``` and ```classifier/data/test/testdata_prep.py``` to prepare the data. You should change the ```sp_op_NORM_MEAN``` and ```sp_op_NORM_STD``` values in ```constants.py``` with the new printed values for the mean and std  
 - Now you can train and evaluate the classifiers
