@@ -1,6 +1,6 @@
 # Confidence on Mesh
 The goal of this project is to add confidence to the generated mesh by the SPIN model. A sample is shown in the figure below, where the occlusion forces the SPIN model to estimate inaccurate mesh. However, our model detects the inaccurate parts of the mesh.
-
+#test
 <p align="center">
 	<img width="450" height="300" src="walking.gif">
 </p>
