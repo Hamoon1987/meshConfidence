@@ -1,9 +1,8 @@
 # python3 sensitivity/OP_image_sensitivity.py --checkpoint=data/model_checkpoint.pt --dataset=3dpw --img_number=0
-
 # This can run through whole dataset and moves the occlusion over each image and generates the occluded images and OpenPose error per joint and as average
 # Gets one image and moves the occluder
 import sys
-sys.path.insert(0, '/meshConfidence')
+sys.path.insert(0, '/SPINH')
 import math
 import torch
 import argparse
@@ -126,6 +125,9 @@ def visualize_grid_mean(batch, heatmap, batch_idx, idx_dict, args):
     scale = batch['scale'][0]
     img_orig = crop(img_orig, center, scale, (output_size, output_size))
     orig_heatmap = heatmap.copy()
+    test_mean = heatmap.mean(axis=2)
+    print("Min:", test_mean.min() * 1000)
+    print("Max:", test_mean.max() * 1000)
     # Preparing the heatmap for visualization
     # This is how to change the size of the heatmap to cover the whole image
     heatmap = cv2.resize(heatmap, (img_orig.shape[0], img_orig.shape[1]), interpolation=cv2.INTER_CUBIC)
@@ -134,10 +136,12 @@ def visualize_grid_mean(batch, heatmap, batch_idx, idx_dict, args):
     # Show the mean error of all joints on one image
     heatmap_mean = heatmap.mean(axis=2)
     heatmap_mean = 1000 * heatmap_mean
-
+    
     # Put a box over the maximum
     heatmap_mean_org = orig_heatmap.mean(axis=2)
     heatmap_mean_org = 1000 * heatmap_mean_org
+    print("Min:", heatmap_mean_org.min())
+    print("Max:", heatmap_mean_org.max())
     h = idx_dict[np.argmax(heatmap_mean_org)][0]
     w = idx_dict[np.argmax(heatmap_mean_org)][1]
     img_size = int(img_orig.shape[0])
@@ -149,9 +153,13 @@ def visualize_grid_mean(batch, heatmap, batch_idx, idx_dict, args):
     w_end = min(img_size, w_start + occ_size)
     cv2.rectangle(img_orig, pt1=(w_start,h_start), pt2=(w_end,h_end), color=(255,0,0), thickness=2)
 
-    plt.imshow(img_orig)
-    plt.imshow(heatmap_mean, alpha=0.5, cmap='jet', interpolation='none')
-    plt.colorbar(label="MPJPE (mm)")
+    im = plt.imshow(img_orig)
+    im = plt.imshow(heatmap_mean, alpha=0.5, cmap='jet', interpolation='none')
+    plt.axis('off')
+    # plt.tight_layout()
+    cb = plt.colorbar(im, label="MPJPE (mm)")
+    cb.set_label(label="MPJPE (mm)", size='25.5')
+    cb.ax.tick_params(labelsize=17.5)
     plt.savefig(os.path.join('sensitivity/', f'OP_result_00_{batch_idx:05d}_mpjpe_mean.png'))
 
 def run_dataset(args):
@@ -269,14 +277,14 @@ def get_error(batch, body_estimation_model):
     # Relative position
     left_heap = gt_keypoints_2d[:,3:4,:].clone()
     left_heap = left_heap.expand(-1,14,-1)
-    gt_keypoints_2d = gt_keypoints_2d - left_heap   
+    # gt_keypoints_2d = gt_keypoints_2d - left_heap   
     # Normalize between -1 and 1
     candidate_sorted_t = torch.sub(candidate_sorted_t, (constants.IMG_RES/2))
     candidate_sorted_t = torch.div(candidate_sorted_t, (constants.IMG_RES/2))
     # Relative position
     left_heap = candidate_sorted_t[:,3:4,:].clone()
     left_heap = left_heap.expand(-1,14,-1)
-    candidate_sorted_t = candidate_sorted_t - left_heap
+    # candidate_sorted_t = candidate_sorted_t - left_heap
     # Absolute error (MPJPE)
     error = torch.sqrt(((candidate_sorted_t - gt_keypoints_2d) ** 2).sum(dim=-1)).cpu().numpy()
     return error

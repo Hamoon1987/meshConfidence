@@ -172,14 +172,14 @@ def get_error(batch, gt_keypoints_2d, body_estimation):
     # Relative position
     left_heap = gt_keypoints_2d[:,3:4,:].clone()
     left_heap = left_heap.expand(-1,14,-1)
-    gt_keypoints_2d = gt_keypoints_2d - left_heap
+    # gt_keypoints_2d = gt_keypoints_2d - left_heap
     # Normalize between -1 and 1
     candidate_sorted_t = torch.sub(candidate_sorted_t, (constants.IMG_RES/2))
     candidate_sorted_t = torch.div(candidate_sorted_t, (constants.IMG_RES/2))
     # Relative position
     left_heap = candidate_sorted_t[:,3:4,:].clone()
     left_heap = left_heap.expand(-1,14,-1)
-    candidate_sorted_t = candidate_sorted_t - left_heap
+    # candidate_sorted_t = candidate_sorted_t - left_heap
 
     error = torch.sqrt(((candidate_sorted_t - gt_keypoints_2d) ** 2).sum(dim=-1)).mean(dim=-1).cpu().numpy()
     # test = occ_images[0]

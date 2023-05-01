@@ -3,7 +3,7 @@
 # This can run through whole dataset and moves the occlusion over each image and generates the occluded images and SPIN error per joint and as average
 # Gets one image and moves the occluder
 import sys
-sys.path.insert(0, '/meshConfidence')
+sys.path.insert(0, '/SPINH')
 import math
 import torch
 import argparse
@@ -20,6 +20,15 @@ import matplotlib.pylab as plt
 import os
 from utils.imutils import crop
 import itertools
+
+def denormalize(images):
+    # De-normalizing the image
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    images = images * torch.tensor([0.229, 0.224, 0.225], device="cpu").reshape(1, 3, 1, 1)
+    images = images + torch.tensor([0.485, 0.456, 0.406], device="cpu").reshape(1, 3, 1, 1)
+    images = images.permute(0, 2, 3, 1).cpu().numpy()
+    images = 255 * images[:, :,:,::-1]
+    return images
 
 def get_occluded_imgs(img, occ_size, occ_pixel, occ_stride):
     # The input is the image in batch=1 and moves the occluder over the image and generate new occluded images
@@ -114,6 +123,9 @@ def visualize_grid_mean(batch, heatmap, img_number, idx_dict, args):
     scale = batch['scale'][0]
     img_orig = crop(img_orig, center, scale, (output_size, output_size))
     orig_heatmap = heatmap.copy()
+    test_mean = heatmap.mean(axis=2)
+    print("Min:", test_mean.min() * 1000)
+    print("Max:", test_mean.max() * 1000)
     # Preparing the heatmap for visualization
     # This is how to change the size of the heatmap to cover the whole image
     heatmap = cv2.resize(heatmap, (img_orig.shape[0], img_orig.shape[1]), interpolation=cv2.INTER_CUBIC)
@@ -126,6 +138,8 @@ def visualize_grid_mean(batch, heatmap, img_number, idx_dict, args):
     # Put a box over the maximum
     heatmap_mean_org = orig_heatmap.mean(axis=2)
     heatmap_mean_org = 1000 * heatmap_mean_org
+    print("Min:", heatmap_mean_org.min())
+    print("Max:", heatmap_mean_org.max())
     h = idx_dict[np.argmax(heatmap_mean_org)][0]
     w = idx_dict[np.argmax(heatmap_mean_org)][1]
     img_size = int(img_orig.shape[0])
@@ -137,9 +151,21 @@ def visualize_grid_mean(batch, heatmap, img_number, idx_dict, args):
     w_end = min(img_size, w_start + occ_size)
     cv2.rectangle(img_orig, pt1=(w_start,h_start), pt2=(w_end,h_end), color=(255,0,0), thickness=2)
 
-    plt.imshow(img_orig)
-    plt.imshow(heatmap_mean, alpha=0.5, cmap='jet', interpolation='none')
-    plt.colorbar(label="MPJPE (mm)")
+    # plt.imshow(img_orig)
+    # plt.imshow(heatmap_mean, alpha=0.5, cmap='jet', interpolation='none')
+    # plt.axis('off')
+    # plt.tight_layout()
+    # plt.colorbar(label="MPJPE (mm)")
+    # plt.savefig(os.path.join('sensitivity/', f'SPIN_result_00_{img_number:05d}_mpjpe_mean.png'))
+
+
+    im = plt.imshow(img_orig)
+    im = plt.imshow(heatmap_mean, alpha=0.5, cmap='jet', interpolation='none')
+    plt.axis('off')
+    # plt.tight_layout()
+    cb = plt.colorbar(im, label="MPJPE (mm)")
+    cb.set_label(label="MPJPE (mm)", size='25.5')
+    cb.ax.tick_params(labelsize=17.5)
     plt.savefig(os.path.join('sensitivity/', f'SPIN_result_00_{img_number:05d}_mpjpe_mean.png'))
 
 def run_dataset(args):
@@ -180,6 +206,12 @@ def run_dataset(args):
         occ_pixel=args.pixel,
         occ_stride=args.stride
     )
+
+    # Save occluded images
+    for i, image in enumerate(occluded_images):
+        images_ = denormalize(image)
+        image_ = images_[0]
+        cv2.imwrite(f"sensitivity/images/test_{i:04d}.jpg", image_)
     mpjpe_heatmap = np.zeros((output_size, output_size, 14))
 
     for occ_img_idx in tqdm(range(occluded_images.shape[0])):
@@ -189,6 +221,7 @@ def run_dataset(args):
     
     visualize_grid_mean(batch, mpjpe_heatmap, img_number, idx_dict, args)
     visualize_grid(images, mpjpe_heatmap, img_number)
+
 
 
 def get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_female,
@@ -219,12 +252,12 @@ def get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_fe
         gt_keypoints_3d = torch.matmul(J_regressor_batch, gt_vertices)
         gt_pelvis = gt_keypoints_3d[:, [0],:].clone()
         gt_keypoints_3d = gt_keypoints_3d[:, joint_mapper_h36m, :]
-        gt_keypoints_3d = gt_keypoints_3d - gt_pelvis 
+        # gt_keypoints_3d = gt_keypoints_3d - gt_pelvis 
     # Get 14 predicted joints from the mesh
     pred_keypoints_3d = torch.matmul(J_regressor_batch, pred_vertices)
     pred_pelvis = pred_keypoints_3d[:, [0],:].clone()
     pred_keypoints_3d = pred_keypoints_3d[:, joint_mapper_h36m, :]
-    pred_keypoints_3d = pred_keypoints_3d - pred_pelvis 
+    # pred_keypoints_3d = pred_keypoints_3d - pred_pelvis 
     # Absolute error (MPJPE)
     error = torch.sqrt(((pred_keypoints_3d - gt_keypoints_3d) ** 2).sum(dim=-1)).cpu().numpy()
     return error

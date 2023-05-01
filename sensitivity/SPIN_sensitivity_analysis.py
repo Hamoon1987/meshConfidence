@@ -170,12 +170,12 @@ def get_error(batch, model, dataset_name, args, smpl_neutral, smpl_male, smpl_fe
         gt_keypoints_3d = torch.matmul(J_regressor_batch, gt_vertices)
         gt_pelvis = gt_keypoints_3d[:, [0],:].clone()
         gt_keypoints_3d = gt_keypoints_3d[:, joint_mapper_h36m, :]
-        gt_keypoints_3d = gt_keypoints_3d - gt_pelvis
+        # gt_keypoints_3d = gt_keypoints_3d - gt_pelvis
     # Get 14 predicted joints from the mesh
     pred_keypoints_3d = torch.matmul(J_regressor_batch, pred_vertices)
     pred_pelvis = pred_keypoints_3d[:, [0],:].clone()
     pred_keypoints_3d = pred_keypoints_3d[:, joint_mapper_h36m, :]
-    pred_keypoints_3d = pred_keypoints_3d - pred_pelvis 
+    # pred_keypoints_3d = pred_keypoints_3d - pred_pelvis 
     # Absolute error (MPJPE)
     error = torch.sqrt(((pred_keypoints_3d - gt_keypoints_3d) ** 2).sum(dim=-1)).mean(dim=-1).cpu().numpy()
     return error
