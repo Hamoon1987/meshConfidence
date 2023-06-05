@@ -1,7 +1,5 @@
 # Confidence on Mesh
-<p align="justify">
 Human pose and shape estimation methods often struggle in situations where body parts are occluded, and they lack the ability to recognize when their predictions are incorrect. This limitation poses significant challenges in human-robot interaction scenarios, where reliable pose estimation is crucial. In our research, we address this problem by proposing a method that combines information from popular methods like [OpenPose](https://github.com/Hzzone/pytorch-openpose) and [SPIN](https://openaccess.thecvf.com/content_ICCV_2019/html/Kolotouros_Learning_to_Reconstruct_3D_Human_Pose_and_Shape_via_Model-Fitting_ICCV_2019_paper.html). Our approach effectively identifies the least reliable regions on the predicted human body mesh, providing valuable insights. We have evaluated our method on multiple datasets, including 3DPW, 3DOH, and Human3.6M, demonstrating its effectiveness in identifying inaccurate regions. Confidence scoring for recovered meshes is an essential aspect of human-robot interaction scenarios, enabling robots to make informed decisions. By detecting unreliable regions, a robot can halt its operation or adjust its viewpoint for better reconstruction. Our method offers a comprehensive solution by highlighting these unreliable parts, as shown in figure below.  
-</p>
 
 [![report](https://img.shields.io/badge/ArXiv-Paper-red)](https://arxiv.org/abs/2305.17245)
 > [**Error Estimation for Single-Image Human Body Mesh Reconstruction**](https://arxiv.org/abs/2305.17245),  
