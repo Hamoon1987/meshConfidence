@@ -1,5 +1,6 @@
 # Confidence on Mesh
 The goal of this project is to add confidence to the generated mesh by the [SPIN](https://openaccess.thecvf.com/content_ICCV_2019/html/Kolotouros_Learning_to_Reconstruct_3D_Human_Pose_and_Shape_via_Model-Fitting_ICCV_2019_paper.html) model. An example is demonstrated in the figure below. While the occlusion forces the SPIN model to estimate inaccurate mesh, our model detects the inaccurate parts of the mesh.
+> [**Error Estimation for Single-Image Human Body Mesh Reconstruction**]([https://arxiv.org/abs/2104.08527](https://arxiv.org/abs/2305.17245))
 
 <p align="center">
 	<img width="450" height="300" src="walking.gif">
